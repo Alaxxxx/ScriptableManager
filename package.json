@@ -1,0 +1,21 @@
+﻿{
+    "name": "com.opalstudio.scriptablemanager",
+    "version": "1.0.0",
+    "displayName": "ScriptableManager",
+    "description": "A simple and efficient way to manage ScriptableObjects in Unity.",
+    "unity": "2021.3",
+    "documentationUrl": "https://github.com/Alaxxxx/ScriptableManager",
+    "licensesUrl": "https://github.com/Alaxxxx/ScriptableManager/blob/main/LICENSE",
+    "license": "MIT",
+    "author": {
+        "name": "Alaxxxx",
+        "email": "contact@opalstudio.fr"
+    },
+    "keywords": [
+        "unity",
+        "scriptableobject",
+        "manager",
+        "tool",
+        "editor"
+    ]
+}
