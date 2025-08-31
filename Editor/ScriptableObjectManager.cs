@@ -44,8 +44,8 @@ namespace OpalStudio.ScriptableManager.Editor
                   _settingsManager.LoadSettings();
 
                   _selectedSoGuids = new HashSet<string>(_settingsManager.GetLastSelection());
-                  _leftPanelWidth = _settingsManager.GetFloat("SOManager_LeftPanelWidth", 250f);
-                  _centerPanelWidth = _settingsManager.GetFloat("SOManager_CenterPanelWidth", 400f);
+                  _leftPanelWidth = SettingsManager.GetFloat("SOManager_LeftPanelWidth", 250f);
+                  _centerPanelWidth = SettingsManager.GetFloat("SOManager_CenterPanelWidth", 400f);
 
                   _soRepository = new ScriptableObjectRepository(_settingsManager);
                   _soRepository.RefreshData();
@@ -137,11 +137,6 @@ namespace OpalStudio.ScriptableManager.Editor
                   }
 
                   GUILayout.FlexibleSpace();
-
-                  if (GUILayout.Button(new GUIContent("Create New", EditorGUIUtility.IconContent("CreateAddNew").image), EditorStyles.toolbarButton))
-                  {
-                        CreateScriptableObjectWindow.ShowWindow(ScriptableObjectRepository.GetAllTypesDerivedFromSo());
-                  }
 
                   var settingsIcon = new GUIContent("⚙️", "Settings");
 

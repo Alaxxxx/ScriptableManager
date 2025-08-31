@@ -35,7 +35,7 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                   EditorPrefs.SetString(ExcludedPathsKey, excluded);
             }
 
-            public float GetFloat(string key, float defaultValue) => EditorPrefs.GetFloat(key, defaultValue);
+            public static float GetFloat(string key, float defaultValue) => EditorPrefs.GetFloat(key, defaultValue);
 
             public void SetFloat(string key, float value) => EditorPrefs.SetFloat(key, value);
 
@@ -49,14 +49,14 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                   SaveSettings();
             }
 
-            public List<string> GetLastSelection()
+            public IEnumerable<string> GetLastSelection()
             {
                   string selection = EditorPrefs.GetString(LastSelectionKey, "");
 
-                  return new List<string>(selection.Split(';').Where(s => !string.IsNullOrEmpty(s)));
+                  return new List<string>(selection.Split(';').Where(static s => !string.IsNullOrEmpty(s)));
             }
 
-            public void SetLastSelection(List<string> guids)
+            public void SetLastSelection(IEnumerable<string> guids)
             {
                   string selection = string.Join(";", guids);
                   EditorPrefs.SetString(LastSelectionKey, selection);
