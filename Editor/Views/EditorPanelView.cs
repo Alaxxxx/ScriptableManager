@@ -25,8 +25,8 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private List<Object> _referencers = new();
             private bool _isSearchingDependencies;
 
-            private readonly Dictionary<string, List<GameObject>> _deepScanResults = new();
-            private readonly HashSet<string> _scannedScenes = new();
+            private readonly Dictionary<string, List<GameObject>> _quickScanResults = new();
+            private bool _isScanning;
 
             public void SetTargets(List<ScriptableObjectData> selection)
             {
@@ -38,9 +38,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _dependencies.Clear();
                   _referencers.Clear();
                   _isSearchingDependencies = false;
+                  _isScanning = false;
 
-                  _deepScanResults.Clear();
-                  _scannedScenes.Clear();
+                  ClearQuickScanResults();
 
                   if (selection == null || selection.Count == 0)
                   {
@@ -81,6 +81,22 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _dependencies = DependencyFinder.FindDependencies(path);
                   _referencers = DependencyFinder.FindReferencers(path);
                   _isSearchingDependencies = false;
+            }
+
+            private void ClearQuickScanResults()
+            {
+                  foreach (List<GameObject> results in _quickScanResults.Values)
+                  {
+                        foreach (GameObject go in results)
+                        {
+                              if (go && go.hideFlags == HideFlags.DontSave)
+                              {
+                                    GameObject.DestroyImmediate(go);
+                              }
+                        }
+                  }
+
+                  _quickScanResults.Clear();
             }
 
             public void Draw()
@@ -261,7 +277,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   height += groupedReferencers.Count * 20;
                   height += _referencers.Count * 22;
 
-                  foreach (List<GameObject> result in _deepScanResults.Values)
+                  foreach (List<GameObject> result in _quickScanResults.Values)
                   {
                         height += result.Count * 22;
                   }
@@ -269,7 +285,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   return height;
             }
 
-            private void DrawSimpleDependencyList(string label, List<Object> assets)
+            private static void DrawSimpleDependencyList(string label, List<Object> assets)
             {
                   EditorGUILayout.LabelField(label, EditorStyles.boldLabel);
 
@@ -350,17 +366,20 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               continue;
                         }
 
+                        string scenePath = AssetDatabase.GetAssetPath(sceneAsset);
+                        bool isScanning = _isScanning;
+
                         Rect rowRect = GUILayoutUtility.GetRect(GUIContent.none, SoManagerStyles.DependencyItemStyle);
                         var scanButtonRect = new Rect(rowRect.xMax - 24, rowRect.y + 2, 22, 16);
-                        var pingAreaRect = new Rect(rowRect.x, rowRect.y, rowRect.width - scanButtonRect.width - 4, rowRect.height);
+                        var pingAreaRect = new Rect(rowRect.x, rowRect.y, rowRect.width - 28, rowRect.height);
 
                         Event currentEvent = Event.current;
 
                         if (currentEvent.type == EventType.MouseDown && rowRect.Contains(currentEvent.mousePosition))
                         {
-                              if (scanButtonRect.Contains(currentEvent.mousePosition))
+                              if (scanButtonRect.Contains(currentEvent.mousePosition) && !isScanning)
                               {
-                                    PerformDeepScan(sceneAsset);
+                                    PerformQuickScan(sceneAsset);
                                     currentEvent.Use();
                               }
                               else if (pingAreaRect.Contains(currentEvent.mousePosition))
@@ -382,26 +401,16 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               }
 
                               GUI.Label(new Rect(labelRect.x + 20, labelRect.y, labelRect.width - 20, 16), sceneAsset.name, EditorStyles.label);
-                              GUI.Label(scanButtonRect, new GUIContent("🔍", "Deep Scan: Find specific GameObjects in this scene. Can be slow."));
+
+                              GUI.Label(scanButtonRect,
+                                          isScanning
+                                                      ? new GUIContent("⏳", "Scanning in progress...")
+                                                      : new GUIContent("🔍", "Quick Scan: Find GameObjects that reference this asset"));
                         }
 
-                        string scenePath = AssetDatabase.GetAssetPath(sceneAsset);
-
-                        if (_deepScanResults.TryGetValue(scenePath, out List<GameObject> gameObjects))
+                        if (_quickScanResults.TryGetValue(scenePath, out List<GameObject> gameObjects))
                         {
-                              if (gameObjects.Count > 0)
-                              {
-                                    foreach (GameObject go in gameObjects)
-                                    {
-                                          DrawGameObjectReference(go);
-                                    }
-                              }
-                              else if (_scannedScenes.Contains(scenePath))
-                              {
-                                    EditorGUI.indentLevel++;
-                                    EditorGUILayout.LabelField("   └ No references found in scene.", EditorStyles.miniLabel);
-                                    EditorGUI.indentLevel--;
-                              }
+                              DrawQuickScanResults(gameObjects);
                         }
                   }
             }
@@ -430,6 +439,30 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   GUI.Label(new Rect(contentRect.x + 20, contentRect.y, contentRect.width - 20, 16), asset.name, EditorStyles.label);
             }
 
+            private static void DrawQuickScanResults(List<GameObject> gameObjects)
+            {
+                  EditorGUI.indentLevel++;
+
+                  if (gameObjects.Count == 0)
+                  {
+                        EditorGUILayout.LabelField("   └ ✅ No references found", EditorStyles.miniLabel);
+                  }
+                  else
+                  {
+                        EditorGUILayout.LabelField($"   └ ✅ {gameObjects.Count} reference(s) found:", EditorStyles.miniLabel);
+
+                        foreach (GameObject go in gameObjects)
+                        {
+                              if (go)
+                              {
+                                    DrawGameObjectReference(go);
+                              }
+                        }
+                  }
+
+                  EditorGUI.indentLevel--;
+            }
+
             private static void DrawGameObjectReference(GameObject go)
             {
                   if (!go)
@@ -442,10 +475,13 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   if (GUILayout.Button(GUIContent.none, SoManagerStyles.DependencyItemStyle))
                   {
                         EditorGUIUtility.PingObject(go);
+                        Selection.activeGameObject = go;
                   }
 
                   Rect buttonRect = GUILayoutUtility.GetLastRect();
-                  Texture icon = EditorGUIUtility.IconContent("GameObject").image;
+
+                  Texture icon = EditorGUIUtility.IconContent("d_GameObject Icon").image;
+
                   var contentRect = new Rect(buttonRect.x + 4, buttonRect.y + 2, buttonRect.width - 8, buttonRect.height - 4);
 
                   if (icon)
@@ -458,17 +494,39 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   EditorGUI.indentLevel--;
             }
 
-            private void PerformDeepScan(SceneAsset sceneAsset)
+            private void PerformQuickScan(SceneAsset sceneAsset)
             {
+                  if (_currentSelection == null || _currentSelection.Count == 0 || _isScanning)
+                  {
+                        return;
+                  }
+
                   string scenePath = AssetDatabase.GetAssetPath(sceneAsset);
                   string targetGuid = _currentSelection[0].guid;
-                  _scannedScenes.Add(scenePath);
 
-                  List<GameObject> results = DependencyFinder.FindGameObjectReferencersInScene(scenePath, targetGuid);
+                  _isScanning = true;
 
-                  if (results != null)
+                  try
                   {
-                        _deepScanResults[scenePath] = results;
+                        EditorUtility.DisplayProgressBar("Quick Scan", $"Analyzing {sceneAsset.name}...", 0.5f);
+
+                        List<GameObject> results = DependencyFinder.FindGameObjectReferencersInScene(scenePath, targetGuid);
+                        _quickScanResults[scenePath] = results ?? new List<GameObject>();
+                  }
+                  catch (Exception e)
+                  {
+                        Debug.LogError($"Error during quick scan of {sceneAsset.name}: {e.Message}");
+                        _quickScanResults[scenePath] = new List<GameObject>();
+                  }
+                  finally
+                  {
+                        _isScanning = false;
+                        EditorUtility.ClearProgressBar();
+
+                        if (EditorWindow.focusedWindow)
+                        {
+                              EditorWindow.focusedWindow.Repaint();
+                        }
                   }
             }
       }
