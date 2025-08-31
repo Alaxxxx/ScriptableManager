@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpalStudio.ScriptableManager.Models;
+using OpalStudio.ScriptableManager.Editor.Models;
 using UnityEditor;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager.Views
+namespace OpalStudio.ScriptableManager.Editor.Views
 {
       public sealed class SoListView
       {
@@ -19,11 +19,13 @@ namespace OpalStudio.ScriptableManager.Views
             private List<ScriptableObjectData> _filteredList;
             private List<ScriptableObjectData> _currentSelection;
             private int _hoveredItemIndex = -1;
+            private HashSet<string> _favoriteGuids;
 
-            public void Draw(List<ScriptableObjectData> filteredList, List<ScriptableObjectData> currentSelection, SortOption sortOption)
+            public void Draw(List<ScriptableObjectData> filteredList, List<ScriptableObjectData> currentSelection, SortOption sortOption, HashSet<string> favoriteGuids)
             {
                   _filteredList = filteredList;
                   _currentSelection = currentSelection;
+                  _favoriteGuids = favoriteGuids;
 
                   DrawHeader(sortOption);
 
@@ -43,7 +45,8 @@ namespace OpalStudio.ScriptableManager.Views
                         foreach (ScriptableObjectData soData in _filteredList)
                         {
                               bool isSelected = _currentSelection != null && _currentSelection.Contains(soData);
-                              DrawSoListItem(soData, isSelected, currentEvent, itemIndex++);
+                              bool isFavorite = _favoriteGuids != null && _favoriteGuids.Contains(soData.guid);
+                              DrawSoListItem(soData, isSelected, isFavorite, currentEvent, itemIndex++);
                         }
                   }
 
@@ -80,7 +83,7 @@ namespace OpalStudio.ScriptableManager.Views
                   EditorGUILayout.EndHorizontal();
             }
 
-            private void DrawSoListItem(ScriptableObjectData soData, bool isSelected, Event currentEvent, int itemIndex)
+            private void DrawSoListItem(ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
             {
                   GUIStyle style = isSelected ? SoManagerStyles.ListItemBackgroundSelected :
                               _hoveredItemIndex == itemIndex ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
@@ -99,10 +102,15 @@ namespace OpalStudio.ScriptableManager.Views
                               GUI.DrawTexture(iconRect, icon);
                         }
 
-                        var nameRect = new Rect(rect.x + 40, rect.y + 5, rect.width - 45, 16);
-                        var typeRect = new Rect(rect.x + 40, rect.y + 21, rect.width - 45, 16);
+                        var nameRect = new Rect(rect.x + 40, rect.y + 5, rect.width - 75, 16);
+                        var typeRect = new Rect(rect.x + 40, rect.y + 21, rect.width - 75, 16);
                         GUI.Label(nameRect, soData.name, EditorStyles.boldLabel);
                         GUI.Label(typeRect, soData.type, EditorStyles.miniLabel);
+
+                        GUIContent starContent = new GUIContent(isFavorite ? "⭐" : "☆", "Toggle Favorite");
+                        var starRect = new Rect(rect.x + rect.width - 30, rect.y + (rect.height / 2f) - 8, 20, 20);
+                        GUIStyle starStyle = new GUIStyle(EditorStyles.label) { fontSize = 14 };
+                        GUI.Label(starRect, starContent, starStyle);
                   }
 
                   HandleItemEvents(rect, soData, isSelected, currentEvent, itemIndex);
@@ -120,6 +128,14 @@ namespace OpalStudio.ScriptableManager.Views
 
                         if (currentEvent.type == EventType.MouseDown)
                         {
+                              var starRect = new Rect(rect.x + rect.width - 30, rect.y, 25, rect.height);
+                              if (currentEvent.button == 0 && starRect.Contains(currentEvent.mousePosition))
+                              {
+                                    OnRequestBulkToggleFavorites?.Invoke(new[] { soData.guid });
+                                    currentEvent.Use();
+                                    return;
+                              }
+
                               if (currentEvent.button == 0)
                               {
                                     OnSelectionChanged?.Invoke(soData, currentEvent.control || currentEvent.command, currentEvent.shift);

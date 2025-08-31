@@ -2,7 +2,7 @@
 using System.Linq;
 using UnityEditor;
 
-namespace OpalStudio.ScriptableManager.Models
+namespace OpalStudio.ScriptableManager.Editor.Models
 {
       public sealed class FavoritesManager
       {

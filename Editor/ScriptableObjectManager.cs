@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpalStudio.ScriptableManager.Models;
-using OpalStudio.ScriptableManager.Views;
+using OpalStudio.ScriptableManager.Editor.Models;
+using OpalStudio.ScriptableManager.Editor.Views;
 using UnityEditor;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager
+namespace OpalStudio.ScriptableManager.Editor
 {
       public sealed class ScriptableObjectManager : EditorWindow
       {
@@ -33,7 +33,7 @@ namespace OpalStudio.ScriptableManager
 
             private float _leftPanelWidth;
             private float _centerPanelWidth;
-            private float rightPanelWidth => position.width - _leftPanelWidth - _centerPanelWidth - 10;
+            private float rightPanelWidth => this.position.width - _leftPanelWidth - _centerPanelWidth - 10;
             private bool _isResizingLeft;
             private bool _isResizingRight;
             private bool _showSettings;
@@ -63,7 +63,7 @@ namespace OpalStudio.ScriptableManager
                   SubscribeToEvents();
 
                   RefreshAll();
-                  wantsMouseMove = true;
+                  this.wantsMouseMove = true;
                   EditorApplication.update += OnEditorUpdate;
             }
 
@@ -157,21 +157,29 @@ namespace OpalStudio.ScriptableManager
             {
                   EditorGUILayout.BeginHorizontal();
 
+                  // --- Left Panel ---
                   EditorGUILayout.BeginVertical(GUILayout.Width(_leftPanelWidth));
+                  {
+                        List<ScriptableObjectData> favoriteSOs = _soRepository.AllScriptableObjects.Where(so => _favoritesManager.favoriteSoGuids.Contains(so.guid))
+                                                                              .OrderBy(static so => so.name)
+                                                                              .ToList();
 
-                  List<ScriptableObjectData> favoriteSOs = _soRepository.AllScriptableObjects.Where(so => _favoritesManager.favoriteSoGuids.Contains(so.guid))
-                                                                        .OrderBy(static so => so.name)
-                                                                        .ToList();
-                  _filterPanel.Draw(_soRepository.GetTopTypes(), favoriteSOs);
+                        _filterPanel.DrawFiltersAndFavorites(favoriteSOs);
+
+                        GUILayout.FlexibleSpace(); // This pushes statistics to the bottom
+
+                        _filterPanel.DrawStatistics(_soRepository.AllScriptableObjects.Count);
+                  }
                   EditorGUILayout.EndVertical();
+
 
                   DrawResizeHandle(ref _isResizingLeft, _leftPanelWidth);
 
                   EditorGUILayout.BeginVertical(GUILayout.Width(_centerPanelWidth));
-                  _soListPanel.Draw(_filteredScriptableObjects, _currentSelectionData, _settingsManager.CurrentSortOption);
+                  _soListPanel.Draw(_filteredScriptableObjects, _currentSelectionData, _settingsManager.CurrentSortOption, _favoritesManager.favoriteSoGuids);
                   EditorGUILayout.EndVertical();
 
-                  DrawResizeHandle(ref _isResizingRight, position.width - rightPanelWidth);
+                  DrawResizeHandle(ref _isResizingRight, this.position.width - rightPanelWidth);
 
                   _editorPanel.Draw();
 
@@ -213,13 +221,13 @@ namespace OpalStudio.ScriptableManager
 
                   if (_isResizingLeft)
                   {
-                        _leftPanelWidth = Mathf.Clamp(e.mousePosition.x, 150, position.width - _centerPanelWidth - 50);
+                        _leftPanelWidth = Mathf.Clamp(e.mousePosition.x, 150, this.position.width - _centerPanelWidth - 50);
                         Repaint();
                   }
 
                   if (_isResizingRight)
                   {
-                        _centerPanelWidth = Mathf.Clamp(e.mousePosition.x - _leftPanelWidth, 200, position.width - _leftPanelWidth - 200);
+                        _centerPanelWidth = Mathf.Clamp(e.mousePosition.x - _leftPanelWidth, 200, this.position.width - _leftPanelWidth - 200);
                         Repaint();
                   }
 
@@ -232,7 +240,7 @@ namespace OpalStudio.ScriptableManager
 
             private void DrawResizeHandle(ref bool isResizing, float xPos)
             {
-                  var resizeRect = new Rect(xPos - 2.5f, 0, 5, position.height);
+                  var resizeRect = new Rect(xPos - 2.5f, 0, 5, this.position.height);
                   EditorGUIUtility.AddCursorRect(resizeRect, MouseCursor.ResizeHorizontal);
 
                   if (Event.current.type == EventType.MouseDown && resizeRect.Contains(Event.current.mousePosition))
@@ -313,6 +321,8 @@ namespace OpalStudio.ScriptableManager
                   RebuildSelectionDataList();
                   _editorPanel.SetTargets(_currentSelectionData);
             }
+
+
 
             private void ToggleSoInSelection(ScriptableObjectData soData)
             {
@@ -415,6 +425,8 @@ namespace OpalStudio.ScriptableManager
             private void HandleBulkToggleFavorites(IEnumerable<string> guids)
             {
                   _favoritesManager.ToggleFavoritesGroup(guids);
+                  Repaint();
             }
       }
 }
+

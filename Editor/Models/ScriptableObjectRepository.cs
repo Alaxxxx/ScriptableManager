@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager.Models
+namespace OpalStudio.ScriptableManager.Editor.Models
 {
       public sealed class ScriptableObjectRepository
       {

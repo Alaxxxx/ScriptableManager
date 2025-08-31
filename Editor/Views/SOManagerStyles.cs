@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager.Views
+namespace OpalStudio.ScriptableManager.Editor.Views
 {
       public static class SoManagerStyles
       {
@@ -12,6 +12,11 @@ namespace OpalStudio.ScriptableManager.Views
             private static GUIStyle listItemBackgroundSelected;
             private static GUIStyle dependencyItemStyle;
             private static GUIStyle toolbarButtonSelected;
+            private static GUIStyle separator;
+            private static GUIStyle dependencyBox;
+            private static GUIStyle favoriteItemStyle;
+            private static GUIStyle favoriteItemHoverStyle;
+
 
             public static GUIStyle ListItemBackground =>
                         listItemBackground ??= new GUIStyle("box")
@@ -59,6 +64,13 @@ namespace OpalStudio.ScriptableManager.Views
                                     margin = new RectOffset(10, 0, 1, 1),
                         };
 
+            public static GUIStyle DependencyBox =>
+                        dependencyBox ??= new GUIStyle("box")
+                        {
+                                    margin = new RectOffset(4, 4, 4, 4),
+                                    padding = new RectOffset(5, 5, 5, 5)
+                        };
+
             public static GUIStyle ToolbarButtonSelected
             {
                   get
@@ -76,6 +88,45 @@ namespace OpalStudio.ScriptableManager.Views
                         return toolbarButtonSelected;
                   }
             }
+
+            public static GUIStyle Separator
+            {
+                  get
+                  {
+                        separator ??= new GUIStyle("box")
+                        {
+                                    border = new RectOffset(0, 0, 0, 0),
+                                    margin = new RectOffset(4, 4, 8, 8),
+                                    padding = new RectOffset(0, 0, 0, 0),
+                                    fixedHeight = 1,
+                        };
+                        separator.normal.background = MakeTex(1, 1, new Color(0.1f, 0.1f, 0.1f, 0.8f));
+
+                        return separator;
+                  }
+            }
+
+            public static GUIStyle FavoriteItemStyle =>
+                        favoriteItemStyle ??= new GUIStyle(EditorStyles.label)
+                        {
+                                    padding = new RectOffset(4, 4, 2, 2),
+                                    margin = new RectOffset(4, 4, 1, 1),
+                                    alignment = TextAnchor.MiddleLeft,
+                        };
+
+            public static GUIStyle FavoriteItemHoverStyle
+            {
+                  get
+                  {
+                        favoriteItemHoverStyle ??= new GUIStyle(FavoriteItemStyle)
+                        {
+                                    normal = { background = MakeTex(1, 1, new Color(0.5f, 0.5f, 0.5f, 0.15f)) }
+                        };
+
+                        return favoriteItemHoverStyle;
+                  }
+            }
+
 
             private static Texture2D MakeTex(int width, int height, Color col)
             {

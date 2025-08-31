@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpalStudio.ScriptableManager.Models;
+using OpalStudio.ScriptableManager.Editor.Models;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace OpalStudio.ScriptableManager.Views
+namespace OpalStudio.ScriptableManager.Editor.Views
 {
       public sealed class EditorPanelView
       {
@@ -221,7 +221,7 @@ namespace OpalStudio.ScriptableManager.Views
 
             private void DrawDependencyPanel()
             {
-                  EditorGUILayout.Space();
+                  GUILayout.Box(GUIContent.none, SoManagerStyles.Separator);
                   _dependenciesFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(_dependenciesFoldout, $"Dependencies ({_dependencies.Count + _referencers.Count})");
 
                   if (_dependenciesFoldout)
@@ -236,9 +236,15 @@ namespace OpalStudio.ScriptableManager.Views
                               float panelHeight = Mathf.Clamp(contentHeight, 100, 300);
                               _dependencyScrollPos = EditorGUILayout.BeginScrollView(_dependencyScrollPos, GUILayout.Height(panelHeight));
 
+                              EditorGUILayout.BeginVertical(SoManagerStyles.DependencyBox);
                               DrawSimpleDependencyList("Uses (Dependencies)", _dependencies);
+                              EditorGUILayout.EndVertical();
+
                               EditorGUILayout.Space(5);
+
+                              EditorGUILayout.BeginVertical(SoManagerStyles.DependencyBox);
                               DrawCategorizedReferencerList("Used By (Referencers)", _referencers);
+                              EditorGUILayout.EndVertical();
 
                               EditorGUILayout.EndScrollView();
                         }

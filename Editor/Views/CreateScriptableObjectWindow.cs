@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager.Views
+namespace OpalStudio.ScriptableManager.Editor.Views
 {
       public sealed class CreateScriptableObjectWindow : EditorWindow
       {

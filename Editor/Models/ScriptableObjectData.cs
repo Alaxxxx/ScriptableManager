@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace OpalStudio.ScriptableManager.Models
+namespace OpalStudio.ScriptableManager.Editor.Models
 {
       [Serializable]
       public sealed class ScriptableObjectData : IEquatable<ScriptableObjectData>

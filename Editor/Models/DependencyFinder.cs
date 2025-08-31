@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
-namespace OpalStudio.ScriptableManager.Models
+namespace OpalStudio.ScriptableManager.Editor.Models
 {
       public static class DependencyFinder
       {
