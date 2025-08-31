@@ -2,10 +2,11 @@
 
 A comprehensive Unity Editor tool for managing, organizing, and analyzing ScriptableObjects in your project with advanced features and an intuitive interface.
 
-[![GitHub license](https://img.shields.io/github/license/alaxxxx/ScriptableManager)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Release](https://img.shields.io/github/v/release/Alaxxxx/ScriptableManager?style=flat-square)](https://github.com/Alaxxxx/ScriptableManager/releases)
-![Unity Version](https://img.shields.io/badge/Unity-2022.3%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![Unity Version](https://img.shields.io/badge/Unity-2021.3%2B-green.svg)](https://unity3d.com/get-unity/download)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Alaxxxx/ScriptableManager)](https://github.com/Alaxxxx/ScriptableManager/commits/main)
+
 
 ## 🚀 Features
 
@@ -60,6 +61,8 @@ Ideal if you prefer a specific, stable version of the asset.
 - **Menu**: `Tools → → ScriptableObject Manager`
 
 ### Interface Overview
+
+<img width="1191" height="792" alt="Interface Overview" src="https://github.com/user-attachments/assets/ca5e8912-bcc8-4a69-95a2-d31609a0df3e" />
 
 ### Basic Operations
 
