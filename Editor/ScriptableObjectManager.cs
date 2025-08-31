@@ -33,7 +33,6 @@ namespace OpalStudio.ScriptableManager.Editor
 
             private float _leftPanelWidth;
             private float _centerPanelWidth;
-            private float rightPanelWidth => this.position.width - _leftPanelWidth - _centerPanelWidth - 10;
             private bool _isResizingLeft;
             private bool _isResizingRight;
             private bool _showSettings;
@@ -65,6 +64,7 @@ namespace OpalStudio.ScriptableManager.Editor
                   RefreshAll();
                   this.wantsMouseMove = true;
                   EditorApplication.update += OnEditorUpdate;
+                  SOAssetProcessor.OnAssetsChanged += OnSOAssetsChanged;
             }
 
             private void OnDisable()
@@ -77,6 +77,7 @@ namespace OpalStudio.ScriptableManager.Editor
                   _settingsManager.SaveSettings();
 
                   EditorApplication.update -= OnEditorUpdate;
+                  SOAssetProcessor.OnAssetsChanged -= OnSOAssetsChanged;
             }
 
             private void OnEditorUpdate()
@@ -111,6 +112,8 @@ namespace OpalStudio.ScriptableManager.Editor
 
             private void OnGUI()
             {
+                  HandleResize();
+
                   RebuildSelectionDataList();
 
                   DrawHeader();
@@ -124,7 +127,12 @@ namespace OpalStudio.ScriptableManager.Editor
                         DrawMainLayout();
                   }
 
-                  HandleResize();
+                  DrawResizeHandles();
+            }
+
+            private void OnSOAssetsChanged()
+            {
+                  RefreshAll();
             }
 
             private void DrawHeader()
@@ -152,7 +160,6 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   EditorGUILayout.BeginHorizontal();
 
-                  // --- Left Panel ---
                   EditorGUILayout.BeginVertical(GUILayout.Width(_leftPanelWidth));
 
                   {
@@ -160,22 +167,18 @@ namespace OpalStudio.ScriptableManager.Editor
                                                                               .OrderBy(static so => so.name)
                                                                               .ToList();
 
-                        _filterPanel.DrawFiltersAndFavorites(favoriteSOs);
+                        _filterPanel.DrawFiltersAndFavorites(favoriteSOs, _soRepository.AllScriptableObjects);
 
-                        GUILayout.FlexibleSpace(); // This pushes statistics to the bottom
+
+                        GUILayout.FlexibleSpace();
 
                         _filterPanel.DrawStatistics(_soRepository.AllScriptableObjects.Count);
                   }
                   EditorGUILayout.EndVertical();
 
-
-                  DrawResizeHandle(ref _isResizingLeft, _leftPanelWidth);
-
                   EditorGUILayout.BeginVertical(GUILayout.Width(_centerPanelWidth));
                   _soListPanel.Draw(_filteredScriptableObjects, _currentSelectionData, _settingsManager.CurrentSortOption, _favoritesManager.favoriteSoGuids);
                   EditorGUILayout.EndVertical();
-
-                  DrawResizeHandle(ref _isResizingRight, this.position.width - rightPanelWidth);
 
                   _editorPanel.Draw();
 
@@ -215,38 +218,119 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   Event e = Event.current;
 
+                  if (e.type == EventType.MouseDown && e.button == 0)
+                  {
+                        CheckResizeStart(e);
+                  }
+
+                  if (_isResizingLeft || _isResizingRight)
+                  {
+                        switch (e.type)
+                        {
+                              case EventType.MouseDrag:
+                              case EventType.MouseMove:
+                                    PerformResize(e);
+                                    e.Use();
+                                    Repaint();
+
+                                    break;
+
+                              case EventType.MouseUp:
+                              case EventType.MouseLeaveWindow:
+                              case EventType.Ignore:
+                                    EndResize(e);
+
+                                    break;
+
+                              case EventType.KeyDown when e.keyCode == KeyCode.Escape:
+                                    EndResize(e);
+
+                                    break;
+                        }
+                  }
+            }
+
+            private void CheckResizeStart(Event e)
+            {
+                  float leftResizeX = _leftPanelWidth;
+                  float rightResizeX = _leftPanelWidth + _centerPanelWidth;
+
+                  var leftResizeRect = new Rect(leftResizeX - 2.5f, 0, 5, this.position.height);
+                  var rightResizeRect = new Rect(rightResizeX - 2.5f, 0, 5, this.position.height);
+
+                  if (leftResizeRect.Contains(e.mousePosition))
+                  {
+                        _isResizingLeft = true;
+                        e.Use();
+                        EditorGUIUtility.SetWantsMouseJumping(1);
+                  }
+                  else if (rightResizeRect.Contains(e.mousePosition))
+                  {
+                        _isResizingRight = true;
+                        e.Use();
+                        EditorGUIUtility.SetWantsMouseJumping(1);
+                  }
+            }
+
+            private void PerformResize(Event e)
+            {
                   if (_isResizingLeft)
                   {
                         _leftPanelWidth = Mathf.Clamp(e.mousePosition.x, 150, this.position.width - _centerPanelWidth - 50);
-                        Repaint();
                   }
 
                   if (_isResizingRight)
                   {
                         _centerPanelWidth = Mathf.Clamp(e.mousePosition.x - _leftPanelWidth, 200, this.position.width - _leftPanelWidth - 200);
-                        Repaint();
-                  }
-
-                  if (e.type == EventType.MouseUp)
-                  {
-                        _isResizingLeft = false;
-                        _isResizingRight = false;
                   }
             }
 
-            private void DrawResizeHandle(ref bool isResizing, float xPos)
+            private void EndResize(Event e)
             {
-                  var resizeRect = new Rect(xPos - 2.5f, 0, 5, this.position.height);
-                  EditorGUIUtility.AddCursorRect(resizeRect, MouseCursor.ResizeHorizontal);
-
-                  if (Event.current.type == EventType.MouseDown && resizeRect.Contains(Event.current.mousePosition))
+                  if (_isResizingLeft || _isResizingRight)
                   {
-                        isResizing = true;
+                        _isResizingLeft = false;
+                        _isResizingRight = false;
+                        EditorGUIUtility.SetWantsMouseJumping(0);
+                        e.Use();
+                        Repaint();
+                  }
+            }
+
+            private void DrawResizeHandles()
+            {
+                  float leftResizeX = _leftPanelWidth;
+                  var leftResizeRect = new Rect(leftResizeX - 2.5f, 0, 5, this.position.height);
+                  EditorGUIUtility.AddCursorRect(leftResizeRect, MouseCursor.ResizeHorizontal);
+
+                  float rightResizeX = _leftPanelWidth + _centerPanelWidth;
+                  var rightResizeRect = new Rect(rightResizeX - 2.5f, 0, 5, this.position.height);
+                  EditorGUIUtility.AddCursorRect(rightResizeRect, MouseCursor.ResizeHorizontal);
+
+                  if (_isResizingLeft || _isResizingRight)
+                  {
+                        Color oldColor = GUI.color;
+                        GUI.color = new Color(0.5f, 0.8f, 1f, 0.8f);
+
+                        if (_isResizingLeft)
+                        {
+                              GUI.DrawTexture(new Rect(leftResizeX - 1f, 0, 2, this.position.height), EditorGUIUtility.whiteTexture);
+                        }
+
+                        if (_isResizingRight)
+                        {
+                              GUI.DrawTexture(new Rect(rightResizeX - 1f, 0, 2, this.position.height), EditorGUIUtility.whiteTexture);
+                        }
+
+                        GUI.color = oldColor;
                   }
             }
 
             private void RefreshAll()
             {
+                  AssetDatabase.SaveAssets();
+                  AssetDatabase.Refresh();
+
                   _soRepository.RefreshData();
                   _filterPanel.UpdateAllSoTypes(_soRepository.GetAllSoTypes());
                   ApplyFiltersAndSort();

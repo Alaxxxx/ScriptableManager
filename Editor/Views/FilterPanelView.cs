@@ -22,6 +22,11 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private Vector2 _favoritesScrollPos;
             private int _hoveredFavoriteIndex = -1;
 
+            private Vector2 _recentlyModifiedScrollPos;
+            private int _hoveredRecentIndex = -1;
+            private const int MaxRecentItems = 10;
+            private const int RecentDaysThreshold = 1;
+
             public FilterPanelView(string initialSearch, string initialType, string[] allTypes, HashSet<string> favoriteGuids)
             {
                   SearchText = initialSearch;
@@ -35,11 +40,10 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _allTypeOptions = allTypes;
             }
 
-            public void DrawFiltersAndFavorites(List<ScriptableObjectData> favorites)
+            public void DrawFiltersAndFavorites(List<ScriptableObjectData> favorites, List<ScriptableObjectData> allSOs)
             {
                   EditorGUILayout.LabelField("🔍 Search & Filters", EditorStyles.boldLabel);
 
-                  // Search Field
                   string newSearchText = EditorGUILayout.TextField(SearchText);
 
                   if (newSearchText != SearchText)
@@ -48,7 +52,6 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         OnFiltersChanged?.Invoke();
                   }
 
-                  // Type Filter Dropdown
                   EditorGUILayout.BeginHorizontal();
 
                   {
@@ -56,7 +59,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         int selectedIndex = Array.IndexOf(_allTypeOptions, SelectedTypeFilter);
 
                         if (selectedIndex == -1)
+                        {
                               selectedIndex = 0;
+                        }
 
                         int newIndex = EditorGUILayout.Popup(selectedIndex, _allTypeOptions);
 
@@ -68,8 +73,6 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   }
                   EditorGUILayout.EndHorizontal();
 
-
-                  // Favorites Only Toggle
                   bool newFavoritesOnly = GUILayout.Toggle(FavoritesOnly, new GUIContent(" Favorites Only", "⭐"));
 
                   if (newFavoritesOnly != FavoritesOnly)
@@ -80,6 +83,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
                   EditorGUILayout.Space(10);
                   DrawFavoritesSection(favorites);
+
+                  EditorGUILayout.Space(10);
+                  DrawRecentlyModifiedSection(allSOs);
             }
 
             private void DrawFavoritesSection(List<ScriptableObjectData> favorites)
@@ -87,7 +93,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   EditorGUILayout.LabelField("⭐ Favorites", EditorStyles.boldLabel);
 
                   EditorGUILayout.BeginVertical("box");
-                  _favoritesScrollPos = EditorGUILayout.BeginScrollView(_favoritesScrollPos, GUILayout.MinHeight(100), GUILayout.MaxHeight(300));
+                  _favoritesScrollPos = EditorGUILayout.BeginScrollView(_favoritesScrollPos, GUILayout.MinHeight(100), GUILayout.MaxHeight(250));
 
                   Event currentEvent = Event.current;
 
@@ -99,7 +105,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   {
                         int index = 0;
 
-                        foreach (ScriptableObjectData fav in favorites.Take(20)) // Limit displayed favorites for performance
+                        foreach (ScriptableObjectData fav in favorites.Take(20))
                         {
                               DrawFavoriteItem(fav, index++, currentEvent);
                         }
@@ -109,20 +115,91 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   EditorGUILayout.EndVertical();
             }
 
+            private void DrawRecentlyModifiedSection(List<ScriptableObjectData> allSOs)
+            {
+                  List<ScriptableObjectData> recentSOs = GetRecentlyModifiedSOs(allSOs);
+
+                  EditorGUILayout.LabelField("🕒 Recently Modified", EditorStyles.boldLabel);
+
+                  EditorGUILayout.BeginVertical("box");
+                  _recentlyModifiedScrollPos = EditorGUILayout.BeginScrollView(_recentlyModifiedScrollPos, GUILayout.MinHeight(100), GUILayout.MaxHeight(250));
+
+                  Event currentEvent = Event.current;
+
+                  if (recentSOs.Count == 0)
+                  {
+                        EditorGUILayout.LabelField("No recent modifications.", EditorStyles.centeredGreyMiniLabel);
+                  }
+                  else
+                  {
+                        int index = 0;
+
+                        foreach (ScriptableObjectData recentSo in recentSOs)
+                        {
+                              DrawRecentlyModifiedItem(recentSo, index++, currentEvent);
+                        }
+                  }
+
+                  EditorGUILayout.EndScrollView();
+                  EditorGUILayout.EndVertical();
+            }
+
+            private void DrawRecentlyModifiedItem(ScriptableObjectData recentSo, int index, Event currentEvent)
+            {
+                  Rect itemRect = GUILayoutUtility.GetRect(GUIContent.none, SoManagerStyles.FavoriteItemStyle, GUILayout.Height(22));
+
+                  if (itemRect.Contains(currentEvent.mousePosition))
+                  {
+                        if (currentEvent.type == EventType.MouseMove && _hoveredRecentIndex != index)
+                        {
+                              _hoveredRecentIndex = index;
+                              SoManagerStyles.NeedsRepaint = true;
+                        }
+
+                        if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
+                        {
+                              OnFavoriteSelected?.Invoke(recentSo);
+                              currentEvent.Use();
+                        }
+                  }
+                  else if (_hoveredRecentIndex == index && currentEvent.type == EventType.MouseMove)
+                  {
+                        _hoveredRecentIndex = -1;
+                        SoManagerStyles.NeedsRepaint = true;
+                  }
+
+                  if (currentEvent.type == EventType.Repaint)
+                  {
+                        GUIStyle style = (_hoveredRecentIndex == index) ? SoManagerStyles.FavoriteItemHoverStyle : SoManagerStyles.FavoriteItemStyle;
+                        style.Draw(itemRect, false, false, false, false);
+
+                        Texture2D icon = AssetPreview.GetMiniThumbnail(recentSo.scriptableObject);
+                        var iconRect = new Rect(itemRect.x + 2, itemRect.y + 3, 16, 16);
+
+                        if (icon)
+                        {
+                              GUI.DrawTexture(iconRect, icon);
+                        }
+
+                        var labelRect = new Rect(itemRect.x + 22, itemRect.y, itemRect.width - 50, itemRect.height);
+                        var timeRect = new Rect(itemRect.x + itemRect.width - 45, itemRect.y + 2, 40, 16);
+
+                        GUI.Label(labelRect, new GUIContent(recentSo.name, $"{recentSo.type} - {recentSo.FormattedDate}"), style);
+
+                        GUI.Label(timeRect, recentSo.RelativeDate, EditorStyles.miniLabel);
+                  }
+            }
+
             private void DrawFavoriteItem(ScriptableObjectData favorite, int index, Event currentEvent)
             {
                   Rect itemRect = GUILayoutUtility.GetRect(GUIContent.none, SoManagerStyles.FavoriteItemStyle, GUILayout.Height(22));
 
-                  // --- Event Handling ---
                   if (itemRect.Contains(currentEvent.mousePosition))
                   {
-                        if (currentEvent.type == EventType.MouseMove)
+                        if (currentEvent.type == EventType.MouseMove && _hoveredFavoriteIndex != index)
                         {
-                              if (_hoveredFavoriteIndex != index)
-                              {
-                                    _hoveredFavoriteIndex = index;
-                                    SoManagerStyles.NeedsRepaint = true;
-                              }
+                              _hoveredFavoriteIndex = index;
+                              SoManagerStyles.NeedsRepaint = true;
                         }
 
                         if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
@@ -156,6 +233,12 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   }
             }
 
+            private List<ScriptableObjectData> GetRecentlyModifiedSOs(IEnumerable<ScriptableObjectData> allSOs)
+            {
+                  DateTime cutoffDate = DateTime.Now.AddDays(-RecentDaysThreshold);
+
+                  return allSOs.Where(so => so.LastModified >= cutoffDate).OrderByDescending(static so => so.LastModified).Take(MaxRecentItems).ToList();
+            }
 
             public void DrawStatistics(int totalCount)
             {
