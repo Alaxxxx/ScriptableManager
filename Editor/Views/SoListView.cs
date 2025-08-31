@@ -21,11 +21,18 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private int _hoveredItemIndex = -1;
             private HashSet<string> _favoriteGuids;
 
+            private bool _isDragging;
+            private ScriptableObjectData _draggedItem;
+            private Vector2 _dragStartPos;
+            private int _lastDragFrame = -1;
+
             public void Draw(List<ScriptableObjectData> filteredList, List<ScriptableObjectData> currentSelection, SortOption sortOption, HashSet<string> favoriteGuids)
             {
                   _filteredList = filteredList;
                   _currentSelection = currentSelection;
                   _favoriteGuids = favoriteGuids;
+
+                  CheckDragStatus();
 
                   DrawHeader(sortOption);
 
@@ -55,6 +62,29 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   EditorGUILayout.EndScrollView();
             }
 
+            private void CheckDragStatus()
+            {
+                  if (_isDragging)
+                  {
+                        if (_lastDragFrame != -1 && Time.frameCount > _lastDragFrame + 2 &&
+                            (DragAndDrop.objectReferences == null || DragAndDrop.objectReferences.Length == 0))
+                        {
+                              EndDrag();
+                              SoManagerStyles.NeedsRepaint = true;
+                        }
+
+                        _lastDragFrame = Time.frameCount;
+
+                        Event currentEvent = Event.current;
+
+                        if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
+                        {
+                              EndDrag();
+                              SoManagerStyles.NeedsRepaint = true;
+                        }
+                  }
+            }
+
             private void DrawHeader(SortOption currentSort)
             {
                   EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
@@ -75,17 +105,31 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         OnSortChanged?.Invoke(SortOption.ByType);
                   }
 
-                  if (GUILayout.Button(new GUIContent("Date", "Sort by Modification Date"), currentSort == SortOption.ByDate ? selectedStyle : defaultStyle))
+                  Rect dateButtonRect = GUILayoutUtility.GetRect(new GUIContent("Date"), defaultStyle);
+                  bool isDateSortActive = currentSort == SortOption.ByDate || currentSort == SortOption.ByDateOldest;
+
+                  if (GUI.Button(dateButtonRect, new GUIContent("Date", "Sort by Date"), isDateSortActive ? selectedStyle : defaultStyle))
                   {
-                        OnSortChanged?.Invoke(SortOption.ByDate);
+                        ShowDateSortMenu(dateButtonRect);
                   }
 
                   EditorGUILayout.EndHorizontal();
             }
 
+            private void ShowDateSortMenu(Rect buttonRect)
+            {
+                  var menu = new GenericMenu();
+                  menu.AddItem(new GUIContent("Recent First"), false, () => OnSortChanged?.Invoke(SortOption.ByDate));
+                  menu.AddItem(new GUIContent("Oldest First"), false, () => OnSortChanged?.Invoke(SortOption.ByDateOldest));
+                  menu.DropDown(buttonRect);
+            }
+
             private void DrawSoListItem(ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
             {
-                  GUIStyle style = isSelected ? SoManagerStyles.ListItemBackgroundSelected :
+                  bool isDraggedItem = _isDragging && _draggedItem.Equals(soData);
+
+                  GUIStyle style = isDraggedItem ? SoManagerStyles.ListItemBackgroundDragging :
+                              isSelected ? SoManagerStyles.ListItemBackgroundSelected :
                               _hoveredItemIndex == itemIndex ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
 
                   Rect rect = GUILayoutUtility.GetRect(GUIContent.none, style, GUILayout.Height(40), GUILayout.ExpandWidth(true));
@@ -126,30 +170,50 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               SoManagerStyles.NeedsRepaint = true;
                         }
 
-                        if (currentEvent.type == EventType.MouseDown)
+                        if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
                         {
                               var starRect = new Rect(rect.x + rect.width - 30, rect.y, 25, rect.height);
-                              if (currentEvent.button == 0 && starRect.Contains(currentEvent.mousePosition))
+
+                              if (starRect.Contains(currentEvent.mousePosition))
                               {
                                     OnRequestBulkToggleFavorites?.Invoke(new[] { soData.guid });
                                     currentEvent.Use();
+
                                     return;
                               }
 
-                              if (currentEvent.button == 0)
-                              {
-                                    OnSelectionChanged?.Invoke(soData, currentEvent.control || currentEvent.command, currentEvent.shift);
+                              _dragStartPos = currentEvent.mousePosition;
+                              _draggedItem = soData;
 
-                                    if (currentEvent.clickCount == 2)
-                                    {
-                                          EditorGUIUtility.PingObject(soData.scriptableObject);
-                                    }
-                              }
-                              else if (currentEvent.button == 1)
+                              OnSelectionChanged?.Invoke(soData, currentEvent.control || currentEvent.command, currentEvent.shift);
+
+                              if (currentEvent.clickCount == 2)
                               {
-                                    ShowContextMenu(soData, isSelected);
+                                    EditorGUIUtility.PingObject(soData.scriptableObject);
                               }
 
+                              currentEvent.Use();
+                        }
+
+                        else if (currentEvent.type == EventType.MouseDrag && _draggedItem != null && !_isDragging)
+                        {
+                              float dragDistance = Vector2.Distance(currentEvent.mousePosition, _dragStartPos);
+
+                              if (dragDistance > 10f)
+                              {
+                                    StartDrag();
+                                    currentEvent.Use();
+                              }
+                        }
+
+                        else if (currentEvent.type == EventType.MouseUp)
+                        {
+                              EndDrag();
+                        }
+
+                        else if (currentEvent.type == EventType.MouseDown && currentEvent.button == 1)
+                        {
+                              ShowContextMenu(soData, isSelected);
                               currentEvent.Use();
                         }
                   }
@@ -158,6 +222,41 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         _hoveredItemIndex = -1;
                         SoManagerStyles.NeedsRepaint = true;
                   }
+            }
+
+            private void StartDrag()
+            {
+                  _isDragging = true;
+
+                  var objectsToDrag = new List<UnityEngine.Object>();
+
+                  if (_currentSelection is { Count: > 1 } && _currentSelection.Contains(_draggedItem))
+                  {
+                        objectsToDrag.AddRange(_currentSelection.Select(static s => s.scriptableObject).Where(static so => so));
+                  }
+                  else
+                  {
+                        if (_draggedItem.scriptableObject)
+                        {
+                              objectsToDrag.Add(_draggedItem.scriptableObject);
+                        }
+                  }
+
+                  if (objectsToDrag.Count > 0)
+                  {
+                        DragAndDrop.PrepareStartDrag();
+                        DragAndDrop.objectReferences = objectsToDrag.ToArray();
+
+                        string dragTitle = objectsToDrag.Count == 1 ? _draggedItem.name : $"{objectsToDrag.Count} ScriptableObjects";
+                        DragAndDrop.StartDrag(dragTitle);
+                  }
+            }
+
+            private void EndDrag()
+            {
+                  _isDragging = false;
+                  _draggedItem = null;
+                  _lastDragFrame = -1;
             }
 
             private void HandleEmptySpaceClick(Event currentEvent)

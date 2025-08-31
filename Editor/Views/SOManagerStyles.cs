@@ -57,6 +57,21 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   }
             }
 
+            public static GUIStyle ListItemBackgroundDragging
+            {
+                  get
+                  {
+                        listItemBackgroundDragging ??= new GUIStyle(ListItemBackground)
+                        {
+                                    normal = { background = MakeTex(1, 1, new Color(0.8f, 0.8f, 0.2f, 0.3f)) }
+                        };
+
+                        return listItemBackgroundDragging;
+                  }
+            }
+
+            private static GUIStyle listItemBackgroundDragging;
+
             public static GUIStyle DependencyItemStyle =>
                         dependencyItemStyle ??= new GUIStyle(EditorStyles.label)
                         {

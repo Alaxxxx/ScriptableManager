@@ -10,7 +10,7 @@ namespace OpalStudio.ScriptableManager.Editor
 {
       public sealed class ScriptableObjectManager : EditorWindow
       {
-            [MenuItem("Tools/Opal Studio/ScriptableObject Manager")]
+            [MenuItem("Tools/ScriptableObject Manager")]
             public static void ShowWindow()
             {
                   var window = GetWindow<ScriptableObjectManager>();
@@ -154,6 +154,7 @@ namespace OpalStudio.ScriptableManager.Editor
 
                   // --- Left Panel ---
                   EditorGUILayout.BeginVertical(GUILayout.Width(_leftPanelWidth));
+
                   {
                         List<ScriptableObjectData> favoriteSOs = _soRepository.AllScriptableObjects.Where(so => _favoritesManager.favoriteSoGuids.Contains(so.guid))
                                                                               .OrderBy(static so => so.name)
@@ -294,6 +295,10 @@ namespace OpalStudio.ScriptableManager.Editor
                               _filteredScriptableObjects = _filteredScriptableObjects.OrderByDescending(static so => so.LastModified).ToList();
 
                               break;
+                        case SortOption.ByDateOldest:
+                              _filteredScriptableObjects = _filteredScriptableObjects.OrderBy(static so => so.LastModified).ToList();
+
+                              break;
                   }
             }
 
@@ -316,7 +321,6 @@ namespace OpalStudio.ScriptableManager.Editor
                   RebuildSelectionDataList();
                   _editorPanel.SetTargets(_currentSelectionData);
             }
-
 
 
             private void ToggleSoInSelection(ScriptableObjectData soData)
@@ -424,4 +428,3 @@ namespace OpalStudio.ScriptableManager.Editor
             }
       }
 }
-

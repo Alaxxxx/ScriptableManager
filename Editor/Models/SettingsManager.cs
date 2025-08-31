@@ -8,7 +8,8 @@ namespace OpalStudio.ScriptableManager.Editor.Models
       {
             ByName,
             ByType,
-            ByDate
+            ByDate,
+            ByDateOldest,
       }
 
       public sealed class SettingsManager

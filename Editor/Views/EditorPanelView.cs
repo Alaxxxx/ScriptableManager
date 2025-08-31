@@ -133,11 +133,35 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private void DrawSingleEdit()
             {
-                  EditorGUILayout.LabelField($"Editing: {_currentSelection[0].name}", EditorStyles.boldLabel);
-                  EditorGUILayout.LabelField($"Type: {_currentSelection[0].type}", EditorStyles.miniLabel);
+                  ScriptableObjectData soData = _currentSelection[0];
+
+                  EditorGUILayout.LabelField($"Editing: {soData.name}", EditorStyles.boldLabel);
+                  EditorGUILayout.LabelField($"Type: {soData.type}", EditorStyles.miniLabel);
+
+                  DrawDetailedInfo(soData);
+
                   DrawAssetPreview();
                   EditorGUILayout.Space(10);
                   DrawSerializedObjectEditor();
+            }
+
+            private void DrawDetailedInfo(ScriptableObjectData soData)
+            {
+                  EditorGUILayout.BeginVertical("box");
+                  EditorGUILayout.LabelField("📁 File Information", EditorStyles.boldLabel);
+
+                  EditorGUILayout.BeginHorizontal();
+                  EditorGUILayout.LabelField("Path:", GUILayout.Width(60));
+                  EditorGUILayout.SelectableLabel(soData.path, EditorStyles.miniLabel, GUILayout.Height(16));
+                  EditorGUILayout.EndHorizontal();
+
+                  EditorGUILayout.BeginHorizontal();
+                  EditorGUILayout.LabelField("Modified:", GUILayout.Width(60));
+                  EditorGUILayout.LabelField($"{soData.FormattedDate} ({soData.RelativeDate})", EditorStyles.miniLabel);
+                  EditorGUILayout.EndHorizontal();
+
+                  EditorGUILayout.EndVertical();
+                  EditorGUILayout.Space(5);
             }
 
             private void DrawMultiEditSameType()
@@ -176,7 +200,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   GUILayout.Space(10);
                   GUILayout.BeginHorizontal();
                   GUILayout.FlexibleSpace();
-                  Rect previewRect = GUILayoutUtility.GetRect(128, 128, GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
+                  Rect previewRect = GUILayoutUtility.GetRect(64, 64, GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
 
                   if (_assetPreview)
                   {
