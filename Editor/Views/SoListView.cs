@@ -4,6 +4,7 @@ using System.Linq;
 using OpalStudio.ScriptableManager.Editor.Models;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace OpalStudio.ScriptableManager.Editor.Views
 {
@@ -228,7 +229,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             {
                   _isDragging = true;
 
-                  var objectsToDrag = new List<UnityEngine.Object>();
+                  var objectsToDrag = new List<Object>();
 
                   if (_currentSelection is { Count: > 1 } && _currentSelection.Contains(_draggedItem))
                   {
