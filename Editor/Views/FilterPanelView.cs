@@ -40,7 +40,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _allTypeOptions = allTypes;
             }
 
-            public void DrawFiltersAndFavorites(List<ScriptableObjectData> favorites, List<ScriptableObjectData> allSOs)
+            public void DrawFiltersAndFavorites(List<ScriptableObjectData> favorites, IEnumerable<ScriptableObjectData> allSOs)
             {
                   EditorGUILayout.LabelField("🔍 Search & Filters", EditorStyles.boldLabel);
 
@@ -115,7 +115,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   EditorGUILayout.EndVertical();
             }
 
-            private void DrawRecentlyModifiedSection(List<ScriptableObjectData> allSOs)
+            private void DrawRecentlyModifiedSection(IEnumerable<ScriptableObjectData> allSOs)
             {
                   List<ScriptableObjectData> recentSOs = GetRecentlyModifiedSOs(allSOs);
 
@@ -233,7 +233,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   }
             }
 
-            private List<ScriptableObjectData> GetRecentlyModifiedSOs(IEnumerable<ScriptableObjectData> allSOs)
+            private static List<ScriptableObjectData> GetRecentlyModifiedSOs(IEnumerable<ScriptableObjectData> allSOs)
             {
                   DateTime cutoffDate = DateTime.Now.AddDays(-RecentDaysThreshold);
 

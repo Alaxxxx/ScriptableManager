@@ -4,51 +4,51 @@ using UnityEngine;
 
 namespace OpalStudio.ScriptableManager.Editor.Models
 {
-      public class SOAssetProcessor : AssetPostprocessor
+      public sealed class SoAssetProcessor : AssetPostprocessor
       {
             public static event Action OnAssetsChanged;
 
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
             {
-                  bool hasSOChanges = false;
+                  bool hasSoChanges = false;
 
                   foreach (string path in importedAssets)
                   {
                         if (IsScriptableObjectAsset(path))
                         {
-                              hasSOChanges = true;
+                              hasSoChanges = true;
 
                               break;
                         }
                   }
 
-                  if (!hasSOChanges)
+                  if (!hasSoChanges)
                   {
                         foreach (string path in deletedAssets)
                         {
                               if (IsScriptableObjectAsset(path))
                               {
-                                    hasSOChanges = true;
+                                    hasSoChanges = true;
 
                                     break;
                               }
                         }
                   }
 
-                  if (!hasSOChanges)
+                  if (!hasSoChanges)
                   {
                         foreach (string path in movedAssets)
                         {
                               if (IsScriptableObjectAsset(path))
                               {
-                                    hasSOChanges = true;
+                                    hasSoChanges = true;
 
                                     break;
                               }
                         }
                   }
 
-                  if (hasSOChanges)
+                  if (hasSoChanges)
                   {
                         OnAssetsChanged?.Invoke();
                   }

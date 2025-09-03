@@ -9,7 +9,7 @@ namespace OpalStudio.ScriptableManager.Editor.Models
 {
       public sealed class ScriptableObjectRepository
       {
-            public List<ScriptableObjectData> AllScriptableObjects { get; private set; }
+            public List<ScriptableObjectData> AllScriptableObjects { get; }
             private readonly SettingsManager _settingsManager;
 
             public ScriptableObjectRepository(SettingsManager settingsManager)
@@ -21,7 +21,15 @@ namespace OpalStudio.ScriptableManager.Editor.Models
             public void RefreshData()
             {
                   AllScriptableObjects.Clear();
-                  string[] guids = AssetDatabase.FindAssets("t:ScriptableObject", new[] { "Assets" });
+
+                  var searchInFolders = new List<string> { "Assets" };
+
+                  if (_settingsManager.ScanPackages)
+                  {
+                        searchInFolders.Add("Packages");
+                  }
+
+                  string[] guids = AssetDatabase.FindAssets("t:ScriptableObject", searchInFolders.ToArray());
 
                   foreach (string guid in guids)
                   {
@@ -55,24 +63,6 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                   types.AddRange(AllScriptableObjects.Select(static so => so.type).Distinct().OrderBy(static t => t));
 
                   return types.ToArray();
-            }
-
-            public Dictionary<string, int> GetTopTypes(int count = 5)
-            {
-                  return AllScriptableObjects.GroupBy(static so => so.type)
-                                             .ToDictionary(static g => g.Key, static g => g.Count())
-                                             .OrderByDescending(static kvp => kvp.Value)
-                                             .Take(count)
-                                             .ToDictionary(static kvp => kvp.Key, static kvp => kvp.Value);
-            }
-
-            public static List<Type> GetAllTypesDerivedFromSo()
-            {
-                  return AppDomain.CurrentDomain.GetAssemblies()
-                                  .SelectMany(static assembly => assembly.GetTypes())
-                                  .Where(static type => type.IsSubclassOf(typeof(ScriptableObject)) && !type.IsAbstract)
-                                  .OrderBy(static type => type.Name)
-                                  .ToList();
             }
       }
 }
