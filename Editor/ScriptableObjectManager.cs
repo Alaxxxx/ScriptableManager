@@ -96,6 +96,9 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   _filterPanel.OnFiltersChanged += ApplyFiltersAndSort;
                   _filterPanel.OnToggleFavoritesFilter += ApplyFiltersAndSort;
+                  _filterPanel.OnRequestToggleFavorite += HandleToggleFavoriteFromFilterPanel;
+                  _filterPanel.OnRequestDeleteFavorite += HandleDeleteFromFilterPanel;
+                  _filterPanel.OnRequestPingFavorite += HandlePingFromFilterPanel;
 
                   _filterPanel.OnFavoriteSelected += soData =>
                   {
@@ -156,7 +159,32 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   _filterPanel.OnFiltersChanged -= ApplyFiltersAndSort;
                   _filterPanel.OnToggleFavoritesFilter -= ApplyFiltersAndSort;
+                  _filterPanel.OnRequestToggleFavorite -= HandleToggleFavoriteFromFilterPanel;
+                  _filterPanel.OnRequestDeleteFavorite -= HandleDeleteFromFilterPanel;
+                  _filterPanel.OnRequestPingFavorite -= HandlePingFromFilterPanel;
                   _settingsPanelView.OnSettingsChanged -= RefreshAll;
+            }
+
+            private void HandleToggleFavoriteFromFilterPanel(ScriptableObjectData soData)
+            {
+                  _assetOperationsController.ToggleFavorites(new[] { soData.guid });
+                  Repaint();
+            }
+
+            private void HandleDeleteFromFilterPanel(ScriptableObjectData soData)
+            {
+                  if (_assetOperationsController.DeleteAssets(new[] { soData.guid }))
+                  {
+                        RefreshAll();
+                  }
+            }
+
+            private static void HandlePingFromFilterPanel(ScriptableObjectData soData)
+            {
+                  if (soData?.scriptableObject != null)
+                  {
+                        EditorGUIUtility.PingObject(soData.scriptableObject);
+                  }
             }
 
             private void OnGUI()
@@ -234,6 +262,7 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   AssetDatabase.Refresh();
                   _soRepository.RefreshData();
+                  _favoritesManager.CleanFavorites(_soRepository.AllScriptableObjects.Select(static so => so.guid));
                   _filterPanel.UpdateAllSoTypes(_soRepository.GetAllSoTypes());
                   ApplyFiltersAndSort();
             }

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace OpalStudio.ScriptableManager.Editor.Views
 {
-      public sealed class EditorPanelView
+      public sealed class EditorPanelView : IDisposable
       {
             public event Action OnRequestBulkDelete;
             public event Action OnRequestBulkAddToFavorites;
@@ -24,6 +24,12 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             {
                   _assetDetailsView = new AssetDetailsView();
                   _dependencyPanelView = new DependencyPanelView();
+            }
+
+            public void Dispose()
+            {
+                  _serializedObject?.Dispose();
+                  _serializedObject = null;
             }
 
             public void SetTargets(List<ScriptableObjectData> selection)
@@ -51,7 +57,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         _dependencyPanelView.ClearTarget();
                         string firstType = selection[0].type;
 
-                        if (selection.Any(s => s.type != firstType))
+                        if (selection.Exists(s => s.type != firstType))
                         {
                               _isMultiEditingDifferentTypes = true;
 

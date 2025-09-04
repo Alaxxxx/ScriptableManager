@@ -40,7 +40,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private void DrawAssetPreview(ScriptableObjectData soData)
             {
-                  if (soData?.scriptableObject == null)
+                  if (!soData?.scriptableObject)
                   {
                         return;
                   }

@@ -55,16 +55,23 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                               continue;
                         }
 
-                        string content = File.ReadAllText(path);
-
-                        if (content.Contains(targetGuid, StringComparison.OrdinalIgnoreCase))
+                        try
                         {
-                              var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
+                              string content = File.ReadAllText(path);
 
-                              if (asset != null)
+                              if (content.Contains(targetGuid, StringComparison.OrdinalIgnoreCase))
                               {
-                                    referencers.Add(asset);
+                                    var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
+
+                                    if (asset != null)
+                                    {
+                                          referencers.Add(asset);
+                                    }
                               }
+                        }
+                        catch (Exception e)
+                        {
+                              Debug.LogWarning($"Could not read asset file at path '{path}'. It might be corrupted or locked. Error: {e.Message}");
                         }
                   }
 
@@ -273,7 +280,8 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                                     {
                                           string nameValue = nextLine[7..].Trim();
 
-                                          if (nameValue.StartsWith("\"", StringComparison.OrdinalIgnoreCase) && nameValue.EndsWith("\"", StringComparison.OrdinalIgnoreCase))
+                                          if (nameValue.StartsWith("\"", StringComparison.OrdinalIgnoreCase) &&
+                                              nameValue.EndsWith("\"", StringComparison.OrdinalIgnoreCase))
                                           {
                                                 nameValue = nameValue.Substring(1, nameValue.Length - 2);
                                           }

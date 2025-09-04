@@ -54,5 +54,16 @@ namespace OpalStudio.ScriptableManager.Editor.Models
 
                   SaveFavorites();
             }
+
+            public void CleanFavorites(IEnumerable<string> allExistingGuids)
+            {
+                  int initialCount = favoriteSoGuids.Count;
+                  favoriteSoGuids.IntersectWith(allExistingGuids);
+
+                  if (favoriteSoGuids.Count < initialCount)
+                  {
+                        SaveFavorites();
+                  }
+            }
       }
 }

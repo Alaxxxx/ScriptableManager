@@ -22,8 +22,15 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             public void SetTarget(ScriptableObjectData target)
             {
-                  if (target == null || _currentTarget.Equals(target))
+                  if (target == null || (_currentTarget != null && _currentTarget.Equals(target)))
                   {
+                        return;
+                  }
+
+                  if (string.IsNullOrEmpty(target.path))
+                  {
+                        Debug.LogWarning("Target ScriptableObjectData has an invalid path.");
+
                         return;
                   }
 
@@ -121,7 +128,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private static void DrawSimpleDependencyList(List<Object> assets)
             {
-                  if (assets.Count == 0)
+                  if (assets == null || assets.Count == 0)
                   {
                         EditorGUILayout.LabelField("   None found.", EditorStyles.miniLabel);
 
@@ -133,14 +140,14 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private void DrawCategorizedReferencerList(List<Object> assets)
             {
-                  if (assets.Count == 0)
+                  if (assets == null || assets.Count == 0)
                   {
                         EditorGUILayout.LabelField("   None found.", EditorStyles.miniLabel);
 
                         return;
                   }
 
-                  foreach (IGrouping<string, Object> group in assets.GroupBy(GetAssetCategory).OrderBy(static g => g.Key))
+                  foreach (IGrouping<string, Object> group in assets.Where(static a => a != null).GroupBy(GetAssetCategory).OrderBy(static g => g.Key))
                   {
                         EditorGUILayout.LabelField($"   {group.Key}", EditorStyles.boldLabel);
 
@@ -262,7 +269,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             {
                   EditorGUI.indentLevel++;
 
-                  if (gameObjects.Count == 0)
+                  if (gameObjects == null || gameObjects.Count == 0)
                   {
                         EditorGUILayout.LabelField("   └ ✅ No references found", EditorStyles.miniLabel);
                   }
@@ -281,6 +288,11 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private static void DrawGameObjectReference(GameObject go)
             {
+                  if (go == null)
+                  {
+                        return;
+                  }
+
                   EditorGUI.indentLevel++;
 
                   if (GUILayout.Button(GUIContent.none, SoManagerStyles.DependencyItemStyle))
@@ -310,6 +322,14 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   }
 
                   string scenePath = AssetDatabase.GetAssetPath(sceneAsset);
+
+                  if (string.IsNullOrEmpty(scenePath))
+                  {
+                        Debug.LogWarning($"Could not find path for scene asset: {sceneAsset.name}");
+
+                        return;
+                  }
+
                   string targetGuid = _currentTarget.guid;
 
                   _isScanning = true;

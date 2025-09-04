@@ -44,15 +44,23 @@ namespace OpalStudio.ScriptableManager.Editor.Models
 
                         if (so)
                         {
-                              AllScriptableObjects.Add(new ScriptableObjectData
+                              try
                               {
-                                          scriptableObject = so,
-                                          name = so.name,
-                                          type = so.GetType().Name,
-                                          path = path,
-                                          guid = guid,
-                                          LastModified = File.GetLastWriteTime(path)
-                              });
+                                    AllScriptableObjects.Add(new ScriptableObjectData
+                                    {
+                                                scriptableObject = so,
+                                                name = so.name,
+                                                type = so.GetType().Name,
+                                                path = path,
+                                                guid = guid,
+                                                LastModified = File.GetLastWriteTime(path)
+                                    });
+                              }
+                              catch (Exception e)
+                              {
+                                    Debug.LogWarning(
+                                                $"Could not retrieve file information for asset at path '{path}'. It may have been deleted outside of Unity. Error: {e.Message}");
+                              }
                         }
                   }
             }

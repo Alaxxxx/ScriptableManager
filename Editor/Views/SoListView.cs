@@ -127,11 +127,31 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private void DrawSoListItem(ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
             {
-                  bool isDraggedItem = _isDragging && _draggedItem.Equals(soData);
+                  if (soData == null || !soData.scriptableObject)
+                  {
+                        return;
+                  }
 
-                  GUIStyle style = isDraggedItem ? SoManagerStyles.ListItemBackgroundDragging :
-                              isSelected ? SoManagerStyles.ListItemBackgroundSelected :
-                              _hoveredItemIndex == itemIndex ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
+                  bool isDraggedItem = _isDragging && _draggedItem != null && _draggedItem.Equals(soData);
+
+                  GUIStyle style;
+
+                  if (isDraggedItem)
+                  {
+                        style = SoManagerStyles.ListItemBackgroundDragging;
+                  }
+                  else if (isSelected)
+                  {
+                        style = SoManagerStyles.ListItemBackgroundSelected;
+                  }
+                  else if (_hoveredItemIndex == itemIndex)
+                  {
+                        style = SoManagerStyles.ListItemBackgroundHover;
+                  }
+                  else
+                  {
+                        style = SoManagerStyles.ListItemBackground;
+                  }
 
                   Rect rect = GUILayoutUtility.GetRect(GUIContent.none, style, GUILayout.Height(40), GUILayout.ExpandWidth(true));
 
@@ -152,9 +172,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         GUI.Label(nameRect, soData.name, EditorStyles.boldLabel);
                         GUI.Label(typeRect, soData.type, EditorStyles.miniLabel);
 
-                        GUIContent starContent = new GUIContent(isFavorite ? "⭐" : "☆", "Toggle Favorite");
+                        var starContent = new GUIContent(isFavorite ? "⭐" : "☆", "Toggle Favorite");
                         var starRect = new Rect(rect.x + rect.width - 30, rect.y + (rect.height / 2f) - 8, 20, 20);
-                        GUIStyle starStyle = new GUIStyle(EditorStyles.label) { fontSize = 14 };
+                        var starStyle = new GUIStyle(EditorStyles.label) { fontSize = 14 };
                         GUI.Label(starRect, starContent, starStyle);
                   }
 

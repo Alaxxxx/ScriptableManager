@@ -12,6 +12,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             public event Action OnFiltersChanged;
             public event Action OnToggleFavoritesFilter;
             public event Action<ScriptableObjectData> OnFavoriteSelected;
+            public event Action<ScriptableObjectData> OnRequestToggleFavorite;
+            public event Action<ScriptableObjectData> OnRequestDeleteFavorite;
+            public event Action<ScriptableObjectData> OnRequestPingFavorite;
 
             public string SearchText { get; private set; }
             public string SelectedTypeFilter { get; private set; }
@@ -193,6 +196,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private void DrawFavoriteItem(ScriptableObjectData favorite, int index, Event currentEvent)
             {
                   Rect itemRect = GUILayoutUtility.GetRect(GUIContent.none, SoManagerStyles.FavoriteItemStyle, GUILayout.Height(22));
+                  var starRect = new Rect(itemRect.x + itemRect.width - 22, itemRect.y + 3, 20, 16);
 
                   if (itemRect.Contains(currentEvent.mousePosition))
                   {
@@ -204,7 +208,20 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
                         if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
                         {
-                              OnFavoriteSelected?.Invoke(favorite);
+                              if (starRect.Contains(currentEvent.mousePosition))
+                              {
+                                    OnRequestToggleFavorite?.Invoke(favorite);
+                              }
+                              else
+                              {
+                                    OnFavoriteSelected?.Invoke(favorite);
+                              }
+
+                              currentEvent.Use();
+                        }
+                        else if (currentEvent.type == EventType.MouseDown && currentEvent.button == 1)
+                        {
+                              ShowFavoriteContextMenu(favorite);
                               currentEvent.Use();
                         }
                   }
@@ -214,7 +231,6 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                         SoManagerStyles.NeedsRepaint = true;
                   }
 
-                  // --- Drawing ---
                   if (currentEvent.type == EventType.Repaint)
                   {
                         GUIStyle style = (_hoveredFavoriteIndex == index) ? SoManagerStyles.FavoriteItemHoverStyle : SoManagerStyles.FavoriteItemStyle;
@@ -228,9 +244,24 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               GUI.DrawTexture(iconRect, icon);
                         }
 
-                        var labelRect = new Rect(itemRect.x + 22, itemRect.y, itemRect.width - 22, itemRect.height);
+                        var labelRect = new Rect(itemRect.x + 22, itemRect.y, itemRect.width - 44, itemRect.height);
                         GUI.Label(labelRect, new GUIContent(favorite.name, favorite.type), style);
+
+                        bool isFavorite = _favoriteGuids.Contains(favorite.guid);
+                        var starContent = new GUIContent(isFavorite ? "⭐" : "☆", "Toggle Favorite");
+                        var starStyle = new GUIStyle(EditorStyles.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter };
+                        GUI.Label(starRect, starContent, starStyle);
                   }
+            }
+
+            private void ShowFavoriteContextMenu(ScriptableObjectData favorite)
+            {
+                  var menu = new GenericMenu();
+                  menu.AddItem(new GUIContent("Ping Asset"), false, () => OnRequestPingFavorite?.Invoke(favorite));
+                  menu.AddSeparator("");
+                  menu.AddItem(new GUIContent("Remove from Favorites"), false, () => OnRequestToggleFavorite?.Invoke(favorite));
+                  menu.AddItem(new GUIContent("Delete Asset"), false, () => OnRequestDeleteFavorite?.Invoke(favorite));
+                  menu.ShowAsContext();
             }
 
             private static List<ScriptableObjectData> GetRecentlyModifiedSOs(IEnumerable<ScriptableObjectData> allSOs)
@@ -250,3 +281,4 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             }
       }
 }
+
