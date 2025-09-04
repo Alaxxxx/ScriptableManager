@@ -15,6 +15,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             public event Action<SortOption> OnSortChanged;
             public event Action<IEnumerable<string>> OnRequestBulkDelete;
             public event Action<IEnumerable<string>> OnRequestBulkToggleFavorites;
+            public event Action<string> OnRequestDuplicate;
 
             private Vector2 _centerPanelScrollPos;
             private List<ScriptableObjectData> _filteredList;
@@ -27,6 +28,9 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private Vector2 _dragStartPos;
             private int _lastDragFrame = -1;
 
+            private const float ItemHeight = 42f;
+            private Rect _lastViewRect;
+
             public void Draw(List<ScriptableObjectData> filteredList, List<ScriptableObjectData> currentSelection, SortOption sortOption, HashSet<string> favoriteGuids)
             {
                   _filteredList = filteredList;
@@ -34,34 +38,47 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _favoriteGuids = favoriteGuids;
 
                   CheckDragStatus();
-
                   DrawHeader(sortOption);
 
-                  _centerPanelScrollPos = EditorGUILayout.BeginScrollView(_centerPanelScrollPos, GUIStyle.none, GUI.skin.verticalScrollbar);
+                  Rect viewRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
-                  GUILayout.Space(5);
+                  if (Event.current.type == EventType.Repaint)
+                  {
+                        _lastViewRect = viewRect;
+                  }
 
                   if (_filteredList == null || _filteredList.Count == 0)
                   {
-                        EditorGUILayout.LabelField("No ScriptableObjects found.", EditorStyles.centeredGreyMiniLabel);
+                        GUI.Label(viewRect, "No ScriptableObjects found.", EditorStyles.centeredGreyMiniLabel);
+                        HandleEmptySpaceClick(Event.current);
+
+                        return;
                   }
-                  else
+
+                  var contentRect = new Rect(0, 0, _lastViewRect.width > 20 ? _lastViewRect.width - 20 : 0, _filteredList.Count * ItemHeight);
+                  _centerPanelScrollPos = GUI.BeginScrollView(viewRect, _centerPanelScrollPos, contentRect);
+
+                  Event currentEvent = Event.current;
+                  float currentHeight = _lastViewRect.height;
+                  float currentWidth = contentRect.width;
+
+                  int startIndex = Mathf.Max(0, (int)(_centerPanelScrollPos.y / ItemHeight));
+                  int endIndex = Mathf.Min(_filteredList.Count, startIndex + (int)Mathf.Ceil(currentHeight / ItemHeight) + 1);
+
+                  for (int i = startIndex; i < endIndex; i++)
                   {
-                        Event currentEvent = Event.current;
-                        int itemIndex = 0;
+                        ScriptableObjectData soData = _filteredList[i];
+                        bool isSelected = _currentSelection != null && _currentSelection.Contains(soData);
+                        bool isFavorite = _favoriteGuids != null && _favoriteGuids.Contains(soData.guid);
 
-                        foreach (ScriptableObjectData soData in _filteredList)
-                        {
-                              bool isSelected = _currentSelection != null && _currentSelection.Contains(soData);
-                              bool isFavorite = _favoriteGuids != null && _favoriteGuids.Contains(soData.guid);
-                              DrawSoListItem(soData, isSelected, isFavorite, currentEvent, itemIndex++);
-                        }
+                        var itemRect = new Rect(0, i * ItemHeight, currentWidth, ItemHeight);
+                        DrawSoListItem(itemRect, soData, isSelected, isFavorite, currentEvent, i);
                   }
 
+                  GUI.EndScrollView();
                   HandleEmptySpaceClick(Event.current);
-
-                  EditorGUILayout.EndScrollView();
             }
+
 
             private void CheckDragStatus()
             {
@@ -125,41 +142,21 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   menu.DropDown(buttonRect);
             }
 
-            private void DrawSoListItem(ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
+            private void DrawSoListItem(Rect rect, ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
             {
-                  if (soData == null || !soData.scriptableObject)
-                  {
-                        return;
-                  }
+                  bool isDraggedItem = _isDragging && _draggedItem.Equals(soData);
 
-                  bool isDraggedItem = _isDragging && _draggedItem != null && _draggedItem.Equals(soData);
+                  GUIStyle style = isDraggedItem ? SoManagerStyles.ListItemBackgroundDragging :
+                              isSelected ? SoManagerStyles.ListItemBackgroundSelected :
+                              _hoveredItemIndex == itemIndex ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
 
-                  GUIStyle style;
-
-                  if (isDraggedItem)
-                  {
-                        style = SoManagerStyles.ListItemBackgroundDragging;
-                  }
-                  else if (isSelected)
-                  {
-                        style = SoManagerStyles.ListItemBackgroundSelected;
-                  }
-                  else if (_hoveredItemIndex == itemIndex)
-                  {
-                        style = SoManagerStyles.ListItemBackgroundHover;
-                  }
-                  else
-                  {
-                        style = SoManagerStyles.ListItemBackground;
-                  }
-
-                  Rect rect = GUILayoutUtility.GetRect(GUIContent.none, style, GUILayout.Height(40), GUILayout.ExpandWidth(true));
+                  var innerRect = new Rect(rect.x + 5, rect.y + 1, rect.width - 10, rect.height - 2);
 
                   if (currentEvent.type == EventType.Repaint)
                   {
-                        style.Draw(rect, false, false, isSelected, false);
+                        style.Draw(innerRect, false, false, isSelected, false);
 
-                        var iconRect = new Rect(rect.x + 5, rect.y + 5, 30, 30);
+                        var iconRect = new Rect(innerRect.x + 5, innerRect.y + 5, 30, 30);
                         Texture2D icon = AssetPreview.GetMiniThumbnail(soData.scriptableObject);
 
                         if (icon)
@@ -167,18 +164,18 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               GUI.DrawTexture(iconRect, icon);
                         }
 
-                        var nameRect = new Rect(rect.x + 40, rect.y + 5, rect.width - 75, 16);
-                        var typeRect = new Rect(rect.x + 40, rect.y + 21, rect.width - 75, 16);
+                        var nameRect = new Rect(innerRect.x + 40, innerRect.y + 5, innerRect.width - 75, 16);
+                        var typeRect = new Rect(innerRect.x + 40, innerRect.y + 21, innerRect.width - 75, 16);
                         GUI.Label(nameRect, soData.name, EditorStyles.boldLabel);
                         GUI.Label(typeRect, soData.type, EditorStyles.miniLabel);
 
                         var starContent = new GUIContent(isFavorite ? "⭐" : "☆", "Toggle Favorite");
-                        var starRect = new Rect(rect.x + rect.width - 30, rect.y + (rect.height / 2f) - 8, 20, 20);
+                        var starRect = new Rect(innerRect.x + innerRect.width - 30, innerRect.y + (innerRect.height / 2f) - 8, 20, 20);
                         var starStyle = new GUIStyle(EditorStyles.label) { fontSize = 14 };
                         GUI.Label(starRect, starContent, starStyle);
                   }
 
-                  HandleItemEvents(rect, soData, isSelected, currentEvent, itemIndex);
+                  HandleItemEvents(innerRect, soData, isSelected, currentEvent, itemIndex);
             }
 
             private void HandleItemEvents(Rect rect, ScriptableObjectData soData, bool isSelected, Event currentEvent, int itemIndex)
@@ -313,6 +310,15 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                               EditorGUIUtility.PingObject(item.scriptableObject);
                         }
                   });
+
+                  if (contextSelection.Count == 1)
+                  {
+                        menu.AddItem(new GUIContent("Duplicate"), false, () => OnRequestDuplicate?.Invoke(guids[0]));
+                  }
+                  else
+                  {
+                        menu.AddDisabledItem(new GUIContent("Duplicate"));
+                  }
 
                   menu.AddSeparator("");
 

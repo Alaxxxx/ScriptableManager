@@ -48,5 +48,27 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
 
                   return false;
             }
+
+            public string DuplicateAsset(string guid)
+            {
+                  ScriptableObjectData itemToDuplicate = _repository.AllScriptableObjects.Find(s => s.guid == guid);
+
+                  if (itemToDuplicate == null)
+                  {
+                        return null;
+                  }
+
+                  string originalPath = itemToDuplicate.path;
+                  string newPath = AssetDatabase.GenerateUniqueAssetPath(originalPath);
+
+                  if (AssetDatabase.CopyAsset(originalPath, newPath))
+                  {
+                        AssetDatabase.Refresh();
+
+                        return AssetDatabase.AssetPathToGUID(newPath);
+                  }
+
+                  return null;
+            }
       }
 }

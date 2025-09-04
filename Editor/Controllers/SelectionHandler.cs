@@ -13,13 +13,11 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
             private List<ScriptableObjectData> _currentSelectionData = new();
 
             private readonly ScriptableObjectRepository _soRepository;
-            private readonly SettingsManager _settingsManager;
             private List<ScriptableObjectData> _filteredList;
 
-            public SelectionHandler(ScriptableObjectRepository soRepository, SettingsManager settingsManager)
+            public SelectionHandler(ScriptableObjectRepository soRepository)
             {
                   _soRepository = soRepository;
-                  _settingsManager = settingsManager;
             }
 
             public void LoadSelection()
@@ -46,8 +44,6 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
 
             public void HandleSelectionChange(ScriptableObjectData soData, bool isCtrl, bool isShift)
             {
-                  SettingsManager.SetLastClickedGuid(soData.guid);
-
                   if (isShift)
                   {
                         SelectRange(soData);
@@ -55,10 +51,12 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
                   else if (isCtrl)
                   {
                         Toggle(soData);
+                        SettingsManager.SetLastClickedGuid(soData.guid);
                   }
                   else
                   {
                         Select(soData);
+                        SettingsManager.SetLastClickedGuid(soData.guid);
                   }
             }
 
@@ -72,6 +70,7 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
             public void SelectFromGuid(ScriptableObjectData soData)
             {
                   Select(soData);
+                  SettingsManager.SetLastClickedGuid(soData.guid);
             }
 
             private void Toggle(ScriptableObjectData soData)
@@ -86,7 +85,7 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
 
             private void SelectRange(ScriptableObjectData soData)
             {
-                  if (_currentSelectionData.Count == 0)
+                  if (_filteredList == null || _filteredList.Count == 0)
                   {
                         Select(soData);
 
@@ -118,7 +117,10 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
 
                   for (int i = start; i <= end; i++)
                   {
-                        _selectedSoGuids.Add(_filteredList[i].guid);
+                        if (i < _filteredList.Count)
+                        {
+                              _selectedSoGuids.Add(_filteredList[i].guid);
+                        }
                   }
 
                   RebuildSelectionDataList();
@@ -129,6 +131,7 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
                   _selectedSoGuids.Clear();
                   RebuildSelectionDataList();
             }
+
 
             public void RemoveFromSelection(IEnumerable<string> guids)
             {

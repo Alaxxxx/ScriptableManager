@@ -30,7 +30,8 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
                   GUILayout.FlexibleSpace();
 
-                  if (GUILayout.Button("Reset to Defaults") && EditorUtility.DisplayDialog("Reset Settings", "Are you sure you want to reset all settings to their default values?", "Reset", "Cancel"))
+                  if (GUILayout.Button("Reset to Defaults") && EditorUtility.DisplayDialog("Reset Settings",
+                                  "Are you sure you want to reset all settings to their default values?", "Reset", "Cancel"))
                   {
                         _settingsManager.ResetToDefaults();
                         OnSettingsChanged?.Invoke();
@@ -49,9 +50,15 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                                           new GUIContent("Scan 'Packages' Folder", "Include assets from the 'Packages' folder in the scan. This may impact performance."),
                                           _settingsManager.ScanPackages);
 
+                  bool newScanOnlyUserMade =
+                              EditorGUILayout.Toggle(
+                                          new GUIContent("Scan Creatable SOs Only", "Only scans for ScriptableObject types that have the [CreateAssetMenu] attribute."),
+                                          _settingsManager.ScanOnlyUserMadeSOs);
+
                   if (EditorGUI.EndChangeCheck())
                   {
                         _settingsManager.ScanPackages = newScanPackages;
+                        _settingsManager.ScanOnlyUserMadeSOs = newScanOnlyUserMade;
                         _settingsManager.SaveSettings();
                         OnSettingsChanged?.Invoke();
                   }
@@ -106,7 +113,7 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
                         if (absolutePath.StartsWith(_projectRootPath, StringComparison.Ordinal))
                         {
-                              string relativePath = absolutePath.Substring(_projectRootPath.Length + 1) + "/";
+                              string relativePath = absolutePath[(_projectRootPath.Length + 1)..] + "/";
 
                               if (!_settingsManager.ExcludedPaths.Contains(relativePath))
                               {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpalStudio.ScriptableManager.Editor.Controllers;
@@ -8,7 +9,7 @@ using UnityEngine;
 
 namespace OpalStudio.ScriptableManager.Editor
 {
-      public sealed class ScriptableObjectManager : EditorWindow
+      public sealed class ScriptableObjectManager : EditorWindow, IDisposable
       {
             [MenuItem("Tools/ScriptableObject Manager")]
             public static void ShowWindow()
@@ -33,6 +34,8 @@ namespace OpalStudio.ScriptableManager.Editor
             private SettingsPanelView _settingsPanelView;
 
             private bool _showSettings;
+            private bool _isScanning;
+            private Action _settingsChangedHandler;
 
             private void OnEnable()
             {
@@ -40,12 +43,10 @@ namespace OpalStudio.ScriptableManager.Editor
                   _settingsManager.LoadSettings();
 
                   _soRepository = new ScriptableObjectRepository(_settingsManager);
-                  _soRepository.RefreshData();
-
                   _favoritesManager = new FavoritesManager();
                   _favoritesManager.LoadFavorites();
 
-                  _selectionHandler = new SelectionHandler(_soRepository, _settingsManager);
+                  _selectionHandler = new SelectionHandler(_soRepository);
                   _selectionHandler.LoadSelection();
 
                   _panelResizer = new PanelResizer(250f, 400f);
@@ -62,12 +63,16 @@ namespace OpalStudio.ScriptableManager.Editor
                   _editorPanel = new EditorPanelView();
                   _settingsPanelView = new SettingsPanelView(_settingsManager);
 
+                  _settingsChangedHandler = () => RefreshAll();
+
                   SubscribeToEvents();
-                  ApplyFiltersAndSort();
+
+                  RefreshAll();
 
                   this.wantsMouseMove = true;
                   EditorApplication.update += OnEditorUpdate;
                   SoAssetProcessor.OnAssetsChanged += OnSOAssetsChanged;
+                  CreateSoWindow.OnAssetCreated += HandleAssetCreated;
             }
 
             private void OnDisable()
@@ -80,7 +85,24 @@ namespace OpalStudio.ScriptableManager.Editor
 
                   EditorApplication.update -= OnEditorUpdate;
                   SoAssetProcessor.OnAssetsChanged -= OnSOAssetsChanged;
+                  CreateSoWindow.OnAssetCreated -= HandleAssetCreated;
                   UnsubscribeFromEvents();
+            }
+
+            public void Dispose()
+            {
+                  _soRepository = null;
+                  _favoritesManager = null;
+                  _settingsManager = null;
+                  _selectionHandler = null;
+                  _panelResizer = null;
+                  _assetOperationsController = null;
+                  _dataFilterController = null;
+                  _filterPanel = null;
+                  _soListPanel = null;
+                  _editorPanel = null;
+                  _settingsPanelView = null;
+                  _settingsChangedHandler = null;
             }
 
             private void OnEditorUpdate()
@@ -96,9 +118,6 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   _filterPanel.OnFiltersChanged += ApplyFiltersAndSort;
                   _filterPanel.OnToggleFavoritesFilter += ApplyFiltersAndSort;
-                  _filterPanel.OnRequestToggleFavorite += HandleToggleFavoriteFromFilterPanel;
-                  _filterPanel.OnRequestDeleteFavorite += HandleDeleteFromFilterPanel;
-                  _filterPanel.OnRequestPingFavorite += HandlePingFromFilterPanel;
 
                   _filterPanel.OnFavoriteSelected += soData =>
                   {
@@ -138,6 +157,16 @@ namespace OpalStudio.ScriptableManager.Editor
                         Repaint();
                   };
 
+                  _soListPanel.OnRequestDuplicate += guid =>
+                  {
+                        string newGuid = _assetOperationsController.DuplicateAsset(guid);
+
+                        if (!string.IsNullOrEmpty(newGuid))
+                        {
+                              HandleAssetCreated(newGuid);
+                        }
+                  };
+
                   _editorPanel.OnRequestBulkDelete += () =>
                   {
                         if (_assetOperationsController.DeleteAssets(_selectionHandler.CurrentSelectionData.Select(static s => s.guid)))
@@ -152,38 +181,17 @@ namespace OpalStudio.ScriptableManager.Editor
                         Repaint();
                   };
 
-                  _settingsPanelView.OnSettingsChanged += RefreshAll;
+                  _settingsPanelView.OnSettingsChanged += _settingsChangedHandler;
             }
 
             private void UnsubscribeFromEvents()
             {
                   _filterPanel.OnFiltersChanged -= ApplyFiltersAndSort;
                   _filterPanel.OnToggleFavoritesFilter -= ApplyFiltersAndSort;
-                  _filterPanel.OnRequestToggleFavorite -= HandleToggleFavoriteFromFilterPanel;
-                  _filterPanel.OnRequestDeleteFavorite -= HandleDeleteFromFilterPanel;
-                  _filterPanel.OnRequestPingFavorite -= HandlePingFromFilterPanel;
-                  _settingsPanelView.OnSettingsChanged -= RefreshAll;
-            }
 
-            private void HandleToggleFavoriteFromFilterPanel(ScriptableObjectData soData)
-            {
-                  _assetOperationsController.ToggleFavorites(new[] { soData.guid });
-                  Repaint();
-            }
-
-            private void HandleDeleteFromFilterPanel(ScriptableObjectData soData)
-            {
-                  if (_assetOperationsController.DeleteAssets(new[] { soData.guid }))
+                  if (_settingsPanelView != null)
                   {
-                        RefreshAll();
-                  }
-            }
-
-            private static void HandlePingFromFilterPanel(ScriptableObjectData soData)
-            {
-                  if (soData?.scriptableObject != null)
-                  {
-                        EditorGUIUtility.PingObject(soData.scriptableObject);
+                        _settingsPanelView.OnSettingsChanged -= _settingsChangedHandler;
                   }
             }
 
@@ -214,9 +222,18 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
+                  EditorGUI.BeginDisabledGroup(_isScanning);
+
                   if (GUILayout.Button(new GUIContent("Refresh", EditorGUIUtility.IconContent("Refresh").image), EditorStyles.toolbarButton, GUILayout.Width(80)))
                   {
                         RefreshAll();
+                  }
+
+                  EditorGUI.EndDisabledGroup();
+
+                  if (GUILayout.Button(new GUIContent("New +", "Create a new ScriptableObject"), EditorStyles.toolbarButton, GUILayout.Width(60)))
+                  {
+                        CreateSoWindow.ShowWindow();
                   }
 
                   GUILayout.FlexibleSpace();
@@ -232,6 +249,15 @@ namespace OpalStudio.ScriptableManager.Editor
 
             private void DrawMainLayout()
             {
+                  if (_isScanning)
+                  {
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.LabelField("Scanning project for ScriptableObjects...", EditorStyles.centeredGreyMiniLabel);
+                        GUILayout.FlexibleSpace();
+
+                        return;
+                  }
+
                   EditorGUILayout.BeginHorizontal();
 
                   EditorGUILayout.BeginVertical(GUILayout.Width(_panelResizer.LeftPanelWidth));
@@ -244,13 +270,11 @@ namespace OpalStudio.ScriptableManager.Editor
                   _filterPanel.DrawStatistics(_soRepository.AllScriptableObjects.Count);
                   EditorGUILayout.EndVertical();
 
-                  // Center Panel
                   EditorGUILayout.BeginVertical(GUILayout.Width(_panelResizer.CenterPanelWidth));
                   List<ScriptableObjectData> filteredData = _dataFilterController.GetFilteredAndSortedData(_filterPanel);
                   _soListPanel.Draw(filteredData, _selectionHandler.CurrentSelectionData.ToList(), _settingsManager.CurrentSortOption, _favoritesManager.favoriteSoGuids);
                   EditorGUILayout.EndVertical();
 
-                  // Right Panel
                   _editorPanel.Draw();
 
                   EditorGUILayout.EndHorizontal();
@@ -258,17 +282,51 @@ namespace OpalStudio.ScriptableManager.Editor
 
             private void OnSOAssetsChanged() => RefreshAll();
 
-            private void RefreshAll()
+            private void RefreshAll(string guidToSelect = null)
             {
+                  if (_isScanning)
+                  {
+                        return;
+                  }
+
+                  _isScanning = true;
+                  Repaint();
+
                   AssetDatabase.Refresh();
-                  _soRepository.RefreshData();
-                  _favoritesManager.CleanFavorites(_soRepository.AllScriptableObjects.Select(static so => so.guid));
-                  _filterPanel.UpdateAllSoTypes(_soRepository.GetAllSoTypes());
-                  ApplyFiltersAndSort();
+
+                  _soRepository.StartScan(() =>
+                  {
+                        _isScanning = false;
+                        _filterPanel.UpdateAllSoTypes(_soRepository.GetAllSoTypes());
+                        ApplyFiltersAndSort();
+
+                        if (!string.IsNullOrEmpty(guidToSelect))
+                        {
+                              ScriptableObjectData newData = _soRepository.AllScriptableObjects.Find(so => so.guid == guidToSelect);
+
+                              if (newData != null)
+                              {
+                                    _selectionHandler.SelectFromGuid(newData);
+                                    _editorPanel.SetTargets(_selectionHandler.CurrentSelectionData.ToList());
+                              }
+                        }
+
+                        Repaint();
+                  });
+            }
+
+            private void HandleAssetCreated(string guid)
+            {
+                  RefreshAll(guid);
             }
 
             private void ApplyFiltersAndSort()
             {
+                  if (_isScanning)
+                  {
+                        return;
+                  }
+
                   List<ScriptableObjectData> filteredData = _dataFilterController.GetFilteredAndSortedData(_filterPanel);
                   _selectionHandler.SetFilteredList(filteredData);
                   _selectionHandler.RebuildSelectionDataList();

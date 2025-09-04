@@ -19,18 +19,22 @@ namespace OpalStudio.ScriptableManager.Editor.Models
             private const string LastSelectionKey = "SOManager_LastSelection";
             private const string LastClickedKey = "SOManager_LastClickedGuid";
             private const string ScanPackagesKey = "SOManager_ScanPackages";
+            private const string ScanOnlyUserMadeKey = "SOManager_ScanOnlyUserMade";
 
             private readonly static List<string> DefaultExcludedPaths = new() { "Assets/Plugins/" };
             private const bool DefaultScanPackages = false;
+            private const bool DefaultScanOnlyUserMade = false;
 
             public SortOption CurrentSortOption { get; private set; }
             public List<string> ExcludedPaths { get; private set; }
             public bool ScanPackages { get; set; }
+            public bool ScanOnlyUserMadeSOs { get; set; }
 
             public void LoadSettings()
             {
                   CurrentSortOption = (SortOption)EditorPrefs.GetInt(SortOptionKey, (int)SortOption.ByName);
                   ScanPackages = EditorPrefs.GetBool(ScanPackagesKey, DefaultScanPackages);
+                  ScanOnlyUserMadeSOs = EditorPrefs.GetBool(ScanOnlyUserMadeKey, DefaultScanOnlyUserMade);
 
                   string excluded = EditorPrefs.GetString(ExcludedPathsKey, "");
 
@@ -43,6 +47,7 @@ namespace OpalStudio.ScriptableManager.Editor.Models
             {
                   EditorPrefs.SetInt(SortOptionKey, (int)CurrentSortOption);
                   EditorPrefs.SetBool(ScanPackagesKey, ScanPackages);
+                  EditorPrefs.SetBool(ScanOnlyUserMadeKey, ScanOnlyUserMadeSOs);
                   string excluded = string.Join(";", ExcludedPaths);
                   EditorPrefs.SetString(ExcludedPathsKey, excluded);
             }
@@ -51,6 +56,7 @@ namespace OpalStudio.ScriptableManager.Editor.Models
             {
                   CurrentSortOption = SortOption.ByName;
                   ScanPackages = DefaultScanPackages;
+                  ScanOnlyUserMadeSOs = DefaultScanOnlyUserMade;
                   ExcludedPaths = new List<string>(DefaultExcludedPaths);
                   SaveSettings();
             }

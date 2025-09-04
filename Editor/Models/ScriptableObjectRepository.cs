@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,7 +11,9 @@ namespace OpalStudio.ScriptableManager.Editor.Models
       public sealed class ScriptableObjectRepository
       {
             public List<ScriptableObjectData> AllScriptableObjects { get; }
+            private bool IsScanning { get; set; }
             private readonly SettingsManager _settingsManager;
+            private IEnumerator _scanCoroutine;
 
             public ScriptableObjectRepository(SettingsManager settingsManager)
             {
@@ -18,9 +21,39 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                   AllScriptableObjects = new List<ScriptableObjectData>();
             }
 
-            public void RefreshData()
+            public void StartScan(Action onComplete)
             {
+                  if (IsScanning)
+                  {
+                        return;
+                  }
+
+                  _scanCoroutine = ScanCoroutine(onComplete);
+                  EditorApplication.update += UpdateScan;
+            }
+
+            private void UpdateScan()
+            {
+                  if (_scanCoroutine != null)
+                  {
+                        if (!_scanCoroutine.MoveNext())
+                        {
+                              EditorApplication.update -= UpdateScan;
+                              _scanCoroutine = null;
+                        }
+                  }
+                  else
+                  {
+                        EditorApplication.update -= UpdateScan;
+                  }
+            }
+
+            private IEnumerator ScanCoroutine(Action onComplete)
+            {
+                  IsScanning = true;
                   AllScriptableObjects.Clear();
+
+                  yield return null;
 
                   var searchInFolders = new List<string> { "Assets" };
 
@@ -31,8 +64,21 @@ namespace OpalStudio.ScriptableManager.Editor.Models
 
                   string[] guids = AssetDatabase.FindAssets("t:ScriptableObject", searchInFolders.ToArray());
 
-                  foreach (string guid in guids)
+                  yield return null;
+
+                  HashSet<Type> userMadeTypes = null;
+
+                  if (_settingsManager.ScanOnlyUserMadeSOs)
                   {
+                        userMadeTypes = new HashSet<Type>(TypeCache.GetTypesWithAttribute<CreateAssetMenuAttribute>()
+                                                                   .Where(static t => !t.IsAbstract && typeof(ScriptableObject).IsAssignableFrom(t)));
+                  }
+
+                  const int batchSize = 50;
+
+                  for (int i = 0; i < guids.Length; i++)
+                  {
+                        string guid = guids[i];
                         string path = AssetDatabase.GUIDToAssetPath(guid);
 
                         if (_settingsManager.ExcludedPaths.Any(excludedPath => path.StartsWith(excludedPath, StringComparison.Ordinal)))
@@ -44,25 +90,31 @@ namespace OpalStudio.ScriptableManager.Editor.Models
 
                         if (so)
                         {
-                              try
+                              if (userMadeTypes != null && !userMadeTypes.Contains(so.GetType()))
                               {
-                                    AllScriptableObjects.Add(new ScriptableObjectData
-                                    {
-                                                scriptableObject = so,
-                                                name = so.name,
-                                                type = so.GetType().Name,
-                                                path = path,
-                                                guid = guid,
-                                                LastModified = File.GetLastWriteTime(path)
-                                    });
+                                    continue;
                               }
-                              catch (Exception e)
+
+                              AllScriptableObjects.Add(new ScriptableObjectData
                               {
-                                    Debug.LogWarning(
-                                                $"Could not retrieve file information for asset at path '{path}'. It may have been deleted outside of Unity. Error: {e.Message}");
-                              }
+                                          scriptableObject = so,
+                                          name = so.name,
+                                          type = so.GetType().Name,
+                                          path = path,
+                                          guid = guid,
+                                          LastModified = File.GetLastWriteTime(path)
+                              });
+                        }
+
+                        if (i > 0 && i % batchSize == 0)
+                        {
+                              yield return null;
                         }
                   }
+
+                  IsScanning = false;
+                  onComplete?.Invoke();
+                  _scanCoroutine = null;
             }
 
             public string[] GetAllSoTypes()
