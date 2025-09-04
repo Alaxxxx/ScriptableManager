@@ -24,12 +24,10 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
                   List<ScriptableObjectData> filteredList = _repository.AllScriptableObjects.Where(so =>
                                                                        {
                                                                              bool matchesSearch = string.IsNullOrEmpty(filterPanel.SearchText) ||
-                                                                                                  so.name.ToLower()
-                                                                                                    .Contains(filterPanel.SearchText.ToLower(),
-                                                                                                                StringComparison.OrdinalIgnoreCase) ||
-                                                                                                  so.type.ToLower()
-                                                                                                    .Contains(filterPanel.SearchText.ToLower(),
-                                                                                                                StringComparison.OrdinalIgnoreCase);
+                                                                                                  so.name.IndexOf(filterPanel.SearchText,
+                                                                                                              StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                                                                  so.type.IndexOf(filterPanel.SearchText,
+                                                                                                              StringComparison.OrdinalIgnoreCase) >= 0;
 
                                                                              bool matchesType = filterPanel.SelectedTypeFilter == "All Types" ||
                                                                                                 so.type == filterPanel.SelectedTypeFilter;
@@ -40,6 +38,11 @@ namespace OpalStudio.ScriptableManager.Editor.Controllers
                                                                              return matchesSearch && matchesType && matchesFavorites;
                                                                        })
                                                                        .ToList();
+
+                  if (filterPanel.PropertyFilters.Any())
+                  {
+                        filteredList = PropertySearcher.FilterByProperties(filteredList, filterPanel.PropertyFilters);
+                  }
 
                   return SortData(filteredList);
             }

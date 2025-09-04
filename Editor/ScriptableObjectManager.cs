@@ -125,6 +125,28 @@ namespace OpalStudio.ScriptableManager.Editor
                         _editorPanel.SetTargets(_selectionHandler.CurrentSelectionData.ToList());
                   };
 
+                  _filterPanel.OnRequestToggleFavorite += soData =>
+                  {
+                        _assetOperationsController.ToggleFavorites(new[] { soData.guid });
+                        Repaint();
+                  };
+
+                  _filterPanel.OnRequestDeleteFavorite += soData =>
+                  {
+                        if (_assetOperationsController.DeleteAssets(new[] { soData.guid }))
+                        {
+                              RefreshAll();
+                        }
+                  };
+
+                  _filterPanel.OnRequestPingFavorite += static soData =>
+                  {
+                        if (soData?.scriptableObject != null)
+                        {
+                              EditorGUIUtility.PingObject(soData.scriptableObject);
+                        }
+                  };
+
                   _soListPanel.OnSelectionChanged += (soData, isCtrl, isShift) =>
                   {
                         _selectionHandler.HandleSelectionChange(soData, isCtrl, isShift);
@@ -188,6 +210,28 @@ namespace OpalStudio.ScriptableManager.Editor
             {
                   _filterPanel.OnFiltersChanged -= ApplyFiltersAndSort;
                   _filterPanel.OnToggleFavoritesFilter -= ApplyFiltersAndSort;
+
+                  _filterPanel.OnRequestToggleFavorite -= soData =>
+                  {
+                        _assetOperationsController.ToggleFavorites(new[] { soData.guid });
+                        Repaint();
+                  };
+
+                  _filterPanel.OnRequestDeleteFavorite -= soData =>
+                  {
+                        if (_assetOperationsController.DeleteAssets(new[] { soData.guid }))
+                        {
+                              RefreshAll();
+                        }
+                  };
+
+                  _filterPanel.OnRequestPingFavorite -= soData =>
+                  {
+                        if (soData?.scriptableObject != null)
+                        {
+                              EditorGUIUtility.PingObject(soData.scriptableObject);
+                        }
+                  };
 
                   if (_settingsPanelView != null)
                   {

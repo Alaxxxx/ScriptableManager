@@ -37,6 +37,8 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   _currentSelection = currentSelection;
                   _favoriteGuids = favoriteGuids;
 
+                  Event currentEvent = Event.current;
+
                   CheckDragStatus();
                   DrawHeader(sortOption);
 
@@ -45,6 +47,12 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   if (Event.current.type == EventType.Repaint)
                   {
                         _lastViewRect = viewRect;
+                  }
+
+                  if (currentEvent.type == EventType.MouseMove && !viewRect.Contains(currentEvent.mousePosition) && _hoveredItemIndex != -1)
+                  {
+                        _hoveredItemIndex = -1;
+                        SoManagerStyles.NeedsRepaint = true;
                   }
 
                   if (_filteredList == null || _filteredList.Count == 0)
@@ -58,7 +66,6 @@ namespace OpalStudio.ScriptableManager.Editor.Views
                   var contentRect = new Rect(0, 0, _lastViewRect.width > 20 ? _lastViewRect.width - 20 : 0, _filteredList.Count * ItemHeight);
                   _centerPanelScrollPos = GUI.BeginScrollView(viewRect, _centerPanelScrollPos, contentRect);
 
-                  Event currentEvent = Event.current;
                   float currentHeight = _lastViewRect.height;
                   float currentWidth = contentRect.width;
 
@@ -145,10 +152,11 @@ namespace OpalStudio.ScriptableManager.Editor.Views
             private void DrawSoListItem(Rect rect, ScriptableObjectData soData, bool isSelected, bool isFavorite, Event currentEvent, int itemIndex)
             {
                   bool isDraggedItem = _isDragging && _draggedItem.Equals(soData);
+                  bool isHovered = _hoveredItemIndex == itemIndex;
 
                   GUIStyle style = isDraggedItem ? SoManagerStyles.ListItemBackgroundDragging :
                               isSelected ? SoManagerStyles.ListItemBackgroundSelected :
-                              _hoveredItemIndex == itemIndex ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
+                              isHovered ? SoManagerStyles.ListItemBackgroundHover : SoManagerStyles.ListItemBackground;
 
                   var innerRect = new Rect(rect.x + 5, rect.y + 1, rect.width - 10, rect.height - 2);
 
@@ -180,65 +188,72 @@ namespace OpalStudio.ScriptableManager.Editor.Views
 
             private void HandleItemEvents(Rect rect, ScriptableObjectData soData, bool isSelected, Event currentEvent, int itemIndex)
             {
-                  if (rect.Contains(currentEvent.mousePosition))
+                  bool isMouseOver = rect.Contains(currentEvent.mousePosition);
+
+                  if (currentEvent.type == EventType.MouseMove)
                   {
-                        if (currentEvent.type == EventType.MouseMove)
+                        if (isMouseOver && _hoveredItemIndex != itemIndex)
                         {
                               _hoveredItemIndex = itemIndex;
                               SoManagerStyles.NeedsRepaint = true;
                         }
-
-                        if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
+                        else if (!isMouseOver && _hoveredItemIndex == itemIndex)
                         {
-                              var starRect = new Rect(rect.x + rect.width - 30, rect.y, 25, rect.height);
+                              _hoveredItemIndex = -1;
+                              SoManagerStyles.NeedsRepaint = true;
+                        }
+                  }
 
-                              if (starRect.Contains(currentEvent.mousePosition))
-                              {
-                                    OnRequestBulkToggleFavorites?.Invoke(new[] { soData.guid });
-                                    currentEvent.Use();
+                  if (!isMouseOver)
+                  {
+                        return;
+                  }
 
-                                    return;
-                              }
+                  if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
+                  {
+                        var starRect = new Rect(rect.x + rect.width - 30, rect.y, 25, rect.height);
 
-                              _dragStartPos = currentEvent.mousePosition;
-                              _draggedItem = soData;
-
-                              OnSelectionChanged?.Invoke(soData, currentEvent.control || currentEvent.command, currentEvent.shift);
-
-                              if (currentEvent.clickCount == 2)
-                              {
-                                    EditorGUIUtility.PingObject(soData.scriptableObject);
-                              }
-
+                        if (starRect.Contains(currentEvent.mousePosition))
+                        {
+                              OnRequestBulkToggleFavorites?.Invoke(new[] { soData.guid });
                               currentEvent.Use();
+
+                              return;
                         }
 
-                        else if (currentEvent.type == EventType.MouseDrag && _draggedItem != null && !_isDragging)
-                        {
-                              float dragDistance = Vector2.Distance(currentEvent.mousePosition, _dragStartPos);
+                        _dragStartPos = currentEvent.mousePosition;
+                        _draggedItem = soData;
 
-                              if (dragDistance > 10f)
-                              {
-                                    StartDrag();
-                                    currentEvent.Use();
-                              }
+                        OnSelectionChanged?.Invoke(soData, currentEvent.control || currentEvent.command, currentEvent.shift);
+
+                        if (currentEvent.clickCount == 2)
+                        {
+                              EditorGUIUtility.PingObject(soData.scriptableObject);
                         }
 
-                        else if (currentEvent.type == EventType.MouseUp)
-                        {
-                              EndDrag();
-                        }
+                        currentEvent.Use();
+                  }
 
-                        else if (currentEvent.type == EventType.MouseDown && currentEvent.button == 1)
+                  else if (currentEvent.type == EventType.MouseDrag && _draggedItem != null && !_isDragging)
+                  {
+                        float dragDistance = Vector2.Distance(currentEvent.mousePosition, _dragStartPos);
+
+                        if (dragDistance > 10f)
                         {
-                              ShowContextMenu(soData, isSelected);
+                              StartDrag();
                               currentEvent.Use();
                         }
                   }
-                  else if (_hoveredItemIndex == itemIndex && currentEvent.type == EventType.MouseMove)
+
+                  else if (currentEvent.type == EventType.MouseUp)
                   {
-                        _hoveredItemIndex = -1;
-                        SoManagerStyles.NeedsRepaint = true;
+                        EndDrag();
+                  }
+
+                  else if (currentEvent.type == EventType.MouseDown && currentEvent.button == 1)
+                  {
+                        ShowContextMenu(soData, isSelected);
+                        currentEvent.Use();
                   }
             }
 

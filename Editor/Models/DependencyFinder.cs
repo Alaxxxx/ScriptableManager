@@ -35,43 +35,26 @@ namespace OpalStudio.ScriptableManager.Editor.Models
                   }
 
                   var referencers = new List<Object>();
-                  string targetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
-                  if (string.IsNullOrEmpty(targetGuid))
-                  {
-                        return referencers;
-                  }
+                  string[] allAssetPaths = AssetDatabase.GetAllAssetPaths();
 
-                  string[] assetPathsToScan = AssetDatabase.GetAllAssetPaths()
-                                                           .Where(static path => path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase) ||
-                                                                                 path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase) ||
-                                                                                 path.EndsWith(".unity", StringComparison.OrdinalIgnoreCase))
-                                                           .ToArray();
-
-                  foreach (string path in assetPathsToScan)
+                  foreach (string path in allAssetPaths)
                   {
                         if (path == assetPath)
                         {
                               continue;
                         }
 
-                        try
-                        {
-                              string content = File.ReadAllText(path);
+                        string[] dependencies = AssetDatabase.GetDependencies(path, false);
 
-                              if (content.Contains(targetGuid, StringComparison.OrdinalIgnoreCase))
+                        if (dependencies.Contains(assetPath))
+                        {
+                              var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
+
+                              if (asset != null)
                               {
-                                    var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
-
-                                    if (asset != null)
-                                    {
-                                          referencers.Add(asset);
-                                    }
+                                    referencers.Add(asset);
                               }
-                        }
-                        catch (Exception e)
-                        {
-                              Debug.LogWarning($"Could not read asset file at path '{path}'. It might be corrupted or locked. Error: {e.Message}");
                         }
                   }
 
