@@ -20,18 +20,18 @@ A comprehensive Unity Editor tool for managing, organizing, and analyzing Script
 
 ## ✨ Features
 
-The tool is built around three core pillars: Organization, Workflow Integration, and Deep Analysis.
+The tool is built around three core pillars: Organization, Workflow Integration, and Analysis.
 
 ### 🗂️ Organization & Management
-- **Advanced Search & Filtering**: Instantly find any asset by name or `ScriptableObject` type.
+- **Advanced Search & Filtering**: Instantly find any asset by name, `ScriptableObject` type, or even by the value of its properties.
+- **Property Search**: Filter your assets based on the value of any field (number, string, bool, etc.), with multiple conditions for complex queries.
 - **Favorites System**: Bookmark your most-used assets for one-click access.
 - **Recently Modified**: A dedicated view to track and access recently changed assets.
 - **Smart Sorting**: Flexible sorting options by name, type, or modification date.
-- **Statistics Panel**: Get a high-level overview of your project's `ScriptableObject` usage and type distribution.
 
 ### ⚡ Workflow & Integration
 - **Drag & Drop Support**: Drag assets directly from the manager to any Inspector field.
-- **Multi-Selection**: Use `Ctrl` to select multiple assets for batch operations (delete, add/remove from favorites).
+- **Multi-Selection**: Use `Ctrl` or `Shift` to select multiple assets for batch operations (delete, add/remove from favorites).
 - **Rich Preview Panel**: See detailed asset information with thumbnails, metadata, and a preview of the object's data.
 - **Customizable Settings**: Configure excluded paths to keep your workspace clean and relevant.
 
@@ -85,10 +85,11 @@ The interface is designed for efficiency with three resizable panels: the catego
 ### Core Workflow
 
 #### 🔍 Searching & Filtering
-Quickly narrow down your assets using the powerful filtering tools at the top of the asset list.
+Quickly narrow down your assets using the powerful filtering tools.
 
 - **Text Search**: Type in the search box to filter assets by name in real-time.
 - **Type Filter**: Use the dropdown to show only assets of a specific `ScriptableObject` type.
+- **Property Search**: When you filter by a specific type, a new panel appears, allowing you to add filters based on the values of that object's fields. You can chain multiple filters for maximum precision.
 - **View Toggles**: Instantly switch between showing **All** assets, only your **Favorites (⭐)**, or **Recently Modified** assets.
 
 #### 🖱️ Working with Assets
@@ -103,7 +104,7 @@ Interacting with assets is fast and intuitive. Here is a quick reference guide:
 | **Star Icon (⭐)** | Toggles the favorite status for an asset. |
 | **`Ctrl` + `Click`** | Select or deselect multiple assets for batch operations. |
 
-### Advanced Analysis Tools
+### Analysis Tools
 
 #### 🔗 Dependency & Reference Analysis
 Select any `ScriptableObject` to see a complete breakdown of its relationships in the right-hand panel. This is essential for safe refactoring and understanding your project's architecture.
@@ -125,7 +126,6 @@ Here you can configure paths to be excluded from the scan, which is useful for i
 **Default Excluded Paths:**
 ```csharp
 Assets/Plugins/
-Packages/
 ```
 
 <br>
